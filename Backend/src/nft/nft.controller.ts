@@ -1,6 +1,15 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -10,18 +19,61 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { NftService } from './nft.service';
+import { NftMintService } from './nft-mint.service';
 import {
   RoyaltyNotFoundDto,
   RoyaltyQueryResponseDto,
   RoyaltyUnauthorizedDto,
 } from './dto/royalty.dto';
+import {
+  MintBadRequestDto,
+  MintConflictDto,
+  MintNotFoundDto,
+  PrepareMintTxDto,
+  PrepareMintTxResponseDto,
+} from './dto/mint.dto';
 
 @ApiTags('nfts')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('nfts')
 export class NftController {
-  constructor(private readonly nftService: NftService) {}
+  constructor(
+    private readonly nftService: NftService,
+    private readonly nftMintService: NftMintService,
+  ) {}
+
+  @Post('mint/prepare')
+  @ApiOperation({
+    summary: 'Prepare unsigned Soroban NFT mint transaction',
+    description:
+      'Builds an unsigned Soroban mint transaction XDR for the given wallet and clip. Includes metadata URI and royalty BPS. The client signs and submits the XDR via their Stellar wallet.',
+  })
+  @ApiOkResponse({
+    description: 'Unsigned mint transaction XDR ready for wallet signing',
+    type: PrepareMintTxResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid wallet address, missing metadata, or bad royalty BPS',
+    type: MintBadRequestDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Clip ID not found',
+    type: MintNotFoundDto,
+  })
+  @ApiConflictResponse({
+    description: 'Clip has already been minted',
+    type: MintConflictDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid JWT bearer token',
+    type: RoyaltyUnauthorizedDto,
+  })
+  prepareMint(
+    @Body() dto: PrepareMintTxDto,
+  ): Promise<PrepareMintTxResponseDto> {
+    return this.nftMintService.prepareMintTx(dto);
+  }
 
   @Get(':mintAddress/royalty')
   @ApiOperation({
