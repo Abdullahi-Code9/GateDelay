@@ -20,6 +20,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { NftService } from './nft.service';
 import { NftMintService } from './nft-mint.service';
+import { IpfsUploadService } from './ipfs-upload.service';
 import {
   RoyaltyNotFoundDto,
   RoyaltyQueryResponseDto,
@@ -32,6 +33,10 @@ import {
   PrepareMintTxDto,
   PrepareMintTxResponseDto,
 } from './dto/mint.dto';
+import {
+  UploadClipMetadataDto,
+  UploadClipMetadataResponseDto,
+} from './dto/ipfs-upload.dto';
 
 @ApiTags('nfts')
 @ApiBearerAuth()
@@ -41,7 +46,36 @@ export class NftController {
   constructor(
     private readonly nftService: NftService,
     private readonly nftMintService: NftMintService,
+    private readonly ipfsUploadService: IpfsUploadService,
   ) {}
+
+  @Post('metadata/upload')
+  @ApiOperation({
+    summary: 'Upload clip metadata to IPFS before minting',
+    description:
+      'Builds a standards-compliant NFT metadata object from the clip, uploads it to IPFS, and saves the resulting metadataUri back to the clip so it is ready for mint.',
+  })
+  @ApiOkResponse({
+    description: 'Metadata uploaded; metadataUri and CID returned',
+    type: UploadClipMetadataResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Validation failed',
+    type: MintBadRequestDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Clip not found',
+    type: MintNotFoundDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid JWT bearer token',
+    type: RoyaltyUnauthorizedDto,
+  })
+  uploadMetadata(
+    @Body() dto: UploadClipMetadataDto,
+  ): Promise<UploadClipMetadataResponseDto> {
+    return this.ipfsUploadService.uploadMetadataToIPFS(dto);
+  }
 
   @Post('mint/prepare')
   @ApiOperation({
