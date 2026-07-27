@@ -6,6 +6,7 @@ import { IpfsUploadService } from './ipfs-upload.service';
 import { NftController } from './nft.controller';
 import { NftMintService } from './nft-mint.service';
 import { NftService } from './nft.service';
+import { RoyaltyConfigService } from './royalty-config.service';
 import { SorobanNftClient } from './soroban/soroban-nft.client';
 
 @Module({
@@ -15,6 +16,7 @@ import { SorobanNftClient } from './soroban/soroban-nft.client';
     NftService,
     NftMintService,
     IpfsUploadService,
+    RoyaltyConfigService,
     SorobanNftClient,
     ClipStore,
   ],
@@ -22,6 +24,7 @@ import { SorobanNftClient } from './soroban/soroban-nft.client';
     NftService,
     NftMintService,
     IpfsUploadService,
+    RoyaltyConfigService,
     SorobanNftClient,
     ClipStore,
   ],
