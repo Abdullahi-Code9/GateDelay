@@ -285,366 +285,617 @@ contract DepositLogicTest is Test {
         vm.startPrank(alice);
         tokenUSDC.approve(address(depositLogic), 1 ether);
         vm.expectRevert(DepositLogic.ZeroAmount.selector);
-        uint256 shares = dl.calculateShares(VAULT_USDC, 50e6);
-        assertEq(shares, 50e6);
-
-        // calculateAssets: 50 shares → 50 USDC
-        uint256 assets = dl.calculateAssets(VAULT_USDC, 50e6);
-        assertEq(assets, 50e6);
+        depositLogic.deposit(address(tokenUSDC), 0);
+        vm.stopPrank();
     }
 
-    function test_ShareCalc_EmptyVault() public {
-        // No deposits yet, shares = amount (1:1)
-        uint256 shares = dl.calculateShares(VAULT_USDC, 100e6);
-        assertEq(shares, 100e6);
-
-        uint256 assets = dl.calculateAssets(VAULT_USDC, 100e6);
-        assertEq(assets, 100e6);
+    function test_deposit_revertsBelowMin() public {
+        vm.startPrank(alice);
+        tokenUSDC.approve(address(depositLogic), 1 ether);
+        vm.expectRevert(DepositLogic.DepositTooSmall.selector);
+        depositLogic.deposit(address(tokenUSDC), 0.5 ether);
+        vm.stopPrank();
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 5. Multi-Asset Support (Assets are supported)
-    // ─────────────────────────────────────────────────────────────────────────
-
-    function test_MultiAsset_DepositDifferentAssets() public {
-        _depositUSDC(alice, 100e6);
-        _depositWETH(alice, 5e18);
-        _depositUSDT(alice, 200e6);
-
-        assertEq(usdc.balanceOf(address(dl)), 100e6);
-        assertEq(weth.balanceOf(address(dl)), 5e18);
-        assertEq(usdt.balanceOf(address(dl)), 200e6);
+    function test_deposit_revertsUnsupportedAsset() public {
+        vm.startPrank(alice);
+        tokenUSDC.approve(address(depositLogic), 100 ether);
+        vm.expectRevert(DepositLogic.AssetNotSupported.selector);
+        depositLogic.deposit(address(0xDEAD), 100 ether);
+        vm.stopPrank();
     }
 
-    function test_MultiAsset_IndependentPools() public {
-        _depositUSDC(alice, 100e6);
-        _depositWETH(alice, 10e18);
-
-        // USDC vault: 100 deposits, 100 shares
-        assertEq(dl.getTotalDeposits(VAULT_USDC), 100e6);
-        assertEq(dl.getTotalShares(VAULT_USDC), 100e6);
-
-        // WETH vault: 10 deposits, 10 shares
-        assertEq(dl.getTotalDeposits(VAULT_WETH), 10e18);
-        assertEq(dl.getTotalShares(VAULT_WETH), 10e18);
+    function test_deposit_revertsWhenPaused() public {
+        depositLogic.setDepositsPaused(true);
+        vm.startPrank(alice);
+        tokenUSDC.approve(address(depositLogic), 100 ether);
+        vm.expectRevert(DepositLogic.DepositsPaused.selector);
+        depositLogic.deposit(address(tokenUSDC), 100 ether);
+        vm.stopPrank();
     }
 
-    function test_MultiAsset_GetVaultIds() public {
-        bytes32[] memory ids = dl.getVaultIds();
-        assertEq(ids.length, 3);
-        assertEq(ids[0], VAULT_USDC);
-        assertEq(ids[1], VAULT_WETH);
-        assertEq(ids[2], VAULT_USDT);
+    function test_deposit_revertsCapExceeded() public {
+        depositLogic.setDepositCap(address(tokenUSDC), 200 ether);
+        _deposit(alice, address(tokenUSDC), 150 ether);
+        vm.startPrank(bob);
+        tokenUSDC.approve(address(depositLogic), 100 ether);
+        vm.expectRevert(DepositLogic.DepositCapExceeded.selector);
+        depositLogic.deposit(address(tokenUSDC), 100 ether);
+        vm.stopPrank();
     }
 
-    function test_MultiAsset_GetVaultAsset() public {
-        assertEq(dl.getVaultAsset(VAULT_USDC), address(usdc));
-        assertEq(dl.getVaultAsset(VAULT_WETH), address(weth));
-        assertEq(dl.getVaultAsset(VAULT_USDT), address(usdt));
+    function test_deposit_transfersTokens() public {
+        uint256 before = tokenUSDC.balanceOf(alice);
+        _deposit(alice, address(tokenUSDC), 100 ether);
+        assertEq(tokenUSDC.balanceOf(alice), before - 100 ether);
+        assertEq(tokenUSDC.balanceOf(address(depositLogic)), 100 ether);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 6. Deposit Tracking (Amounts are tracked)
-    // ─────────────────────────────────────────────────────────────────────────
+    function test_deposit_multipleAssets() public {
+        _deposit(alice, address(tokenUSDC), 100 ether);
+        _deposit(alice, address(tokenWETH), 10 ether);
+        _deposit(alice, address(tokenWBTC), 1 * 1e8);
 
-    function test_Tracking_DepositHistory() public {
-        _depositUSDC(alice, 100e6);
-        _depositUSDC(alice, 200e6);
-
-        DepositLogic.DepositRecord[] memory history = dl.getDepositHistory(VAULT_USDC);
-        assertEq(history.length, 2);
-        assertEq(history[0].amount, 100e6);
-        assertEq(history[0].shares, 100e6);
-        assertEq(history[0].asset, address(usdc));
-        assertEq(history[0].depositor, alice);
-        assertEq(history[1].amount, 200e6);
-        assertEq(history[1].shares, 200e6);
+        assertEq(depositLogic.getDepositAmount(alice, address(tokenUSDC)), 100 ether);
+        assertEq(depositLogic.getDepositAmount(alice, address(tokenWETH)), 10 ether);
+        assertEq(depositLogic.getDepositAmount(alice, address(tokenWBTC)), 1 * 1e8);
     }
 
-    function test_Tracking_DepositCount() public {
-        assertEq(dl.getDepositCount(VAULT_USDC), 0);
-        _depositUSDC(alice, 100e6);
-        assertEq(dl.getDepositCount(VAULT_USDC), 1);
-        _depositUSDC(alice, 50e6);
-        assertEq(dl.getDepositCount(VAULT_USDC), 2);
+    function test_deposit_multipleDepositsAccumulate() public {
+        _deposit(alice, address(tokenUSDC), 100 ether);
+        _deposit(alice, address(tokenUSDC), 50 ether);
+        assertEq(depositLogic.getDepositAmount(alice, address(tokenUSDC)), 150 ether);
+        DepositLogic.AssetPosition memory bobPos = depositLogic.getAssetPosition(address(tokenUSDC), bob);
+        assertEq(bobPos.totalDeposited, amount);
+        assertEq(bobPos.shares, shares);
+        DepositLogic.AssetPosition memory alicePos = depositLogic.getAssetPosition(address(tokenUSDC), alice);
+        assertEq(alicePos.totalDeposited, 0);
     }
 
-    function test_Tracking_DepositBalances() public {
-        _depositUSDC(alice, 100e6);
-        _depositUSDC(alice, 50e6);
+    // ══════════════════════════════════════════════════════════════════════════
+    // 4. Deposit Tracking (Amounts are tracked)
+    // ══════════════════════════════════════════════════════════════════════════
 
-        assertEq(dl.getDepositBalance(VAULT_USDC, alice), 150e6);
-        assertEq(dl.getShareBalance(VAULT_USDC, alice), 150e6);
+    function test_tracking_depositRecordCreated() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        DepositLogic.DepositRecord[] memory history = depositLogic.getDepositHistory(alice);
+        assertEq(history.length, 1);
+        assertEq(history[0].token, address(tokenUSDC));
+        assertEq(history[0].assets, 1_000e6);
+        assertEq(history[0].timestamp, block.timestamp);
     }
 
-    function test_Tracking_MultipleUsers() public {
-        _depositUSDC(alice, 100e6);
-        _depositUSDC(bob, 200e6);
+    function test_tracking_multipleRecords() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        _deposit(alice, address(tokenWETH), 5 ether);
+        _deposit(alice, address(tokenUSDC), 500e6);
 
-        assertEq(dl.getDepositBalance(VAULT_USDC, alice), 100e6);
-        assertEq(dl.getDepositBalance(VAULT_USDC, bob), 200e6);
-        assertEq(dl.getShareBalance(VAULT_USDC, alice), 100e6);
-        assertEq(dl.getShareBalance(VAULT_USDC, bob), 200e6);
+        DepositLogic.DepositRecord[] memory history = depositLogic.getDepositHistory(alice);
+        assertEq(history.length, 3);
+        assertEq(history[0].assets, 1_000e6);
+        assertEq(history[0].token, address(tokenUSDC));
+        assertEq(history[1].assets, 5 ether);
+        assertEq(history[1].token, address(tokenWETH));
+        assertEq(history[2].assets, 500e6);
+        assertEq(history[2].token, address(tokenUSDC));
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 7. Withdrawal Functionality
-    // ─────────────────────────────────────────────────────────────────────────
-
-    function test_Withdraw_Basic() public {
-        _depositUSDC(alice, 100e6);
-
-        uint256 balanceBefore = usdc.balanceOf(alice);
-        uint256 amount = dl.withdraw(VAULT_USDC, 50e6);
-
-        assertEq(amount, 50e6, "withdrew correct amount");
-        assertEq(usdc.balanceOf(alice), balanceBefore + 50e6, "alice received tokens");
-        assertEq(dl.getDepositBalance(VAULT_USDC, alice), 50e6, "remaining balance");
-        assertEq(dl.getShareBalance(VAULT_USDC, alice), 50e6, "remaining shares");
+    function test_tracking_depositCount() public {
+        assertEq(depositLogic.depositCount(alice), 0);
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        assertEq(depositLogic.depositCount(alice), 1);
+        _deposit(alice, address(tokenUSDC), 500e6);
+        assertEq(depositLogic.depositCount(alice), 2);
     }
 
-    function test_Withdraw_FullAmount() public {
-        _depositUSDC(alice, 100e6);
+    function test_tracking_assetPosition() public {
+        DepositLogic.AssetPosition memory pos = depositLogic.getAssetPosition(address(tokenUSDC), alice);
+        assertEq(pos.totalDeposited, 0);
+        assertEq(pos.totalWithdrawn, 0);
+        assertEq(pos.shares, 0);
 
-        uint256 amount = dl.withdraw(VAULT_USDC, 100e6);
-        assertEq(amount, 100e6);
-        assertEq(dl.getDepositBalance(VAULT_USDC, alice), 0);
-        assertEq(dl.getShareBalance(VAULT_USDC, alice), 0);
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        pos = depositLogic.getAssetPosition(address(tokenUSDC), alice);
+        assertEq(pos.totalDeposited, 1_000e6);
+        assertEq(pos.shares, 1_000e6 - 1000);
     }
 
-    function test_Withdraw_EmitsEvent() public {
-        _depositUSDC(alice, 100e6);
+    // ══════════════════════════════════════════════════════════════════════════
+    // 5. Share Calculation (Shares are calculated)
+    // ══════════════════════════════════════════════════════════════════════════
 
-        vm.expectEmit(true, true, true, true);
-        emit DepositLogic.Withdrawn(VAULT_USDC, alice, address(usdc), 50e6, 50e6);
-        dl.withdraw(VAULT_USDC, 50e6);
+    function test_shares_firstDepositOneToOneMinusMinimum() public {
+        uint256 shares = _deposit(alice, address(tokenUSDC), 1_000e6);
+        // First deposit: 1:1 minus MINIMUM_SHARES (1000)
+        assertEq(shares, 1_000e6 - 1000, "first deposit 1:1 minus minimum shares");
     }
 
-    function test_Withdraw_RevertsZeroShares() public {
-        vm.expectRevert(DepositLogic.ZeroAmount.selector);
-        dl.withdraw(VAULT_USDC, 0);
+    function test_shares_subsequentDepositsProRata() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        uint256 bobShares = _deposit(bob, address(tokenUSDC), 500e6);
+        // After first deposit: assetSupply = 1_000e6 - 1000, assetTVL = 1_000e6
+        // bobShares = 500e6 * (1_000e6 - 1000) / 1_000e6 = 500e6 - 500
+        assertEq(bobShares, 500e6 - 500, "subsequent deposit pro-rata");
     }
 
-    function test_Withdraw_RevertsInsufficientShares() public {
-        vm.expectRevert(DepositLogic.InsufficientShares.selector);
-        dl.withdraw(VAULT_USDC, 100e6);
+    function test_shares_previewDeposit() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        uint256 previewed = depositLogic.previewDeposit(address(tokenUSDC), 500e6);
+        // After first deposit: assetSupply = 1_000e6 - 1000, assetTVL = 1_000e6
+        // preview = 500e6 * (1_000e6 - 1000) / 1_000e6 = 500e6 - 500
+        assertEq(previewed, 500e6 - 500, "preview after deposits");
     }
 
-    function test_Withdraw_RevertsNonExistentVault() public {
-        vm.expectRevert(DepositLogic.VaultDoesNotExist.selector);
-        dl.withdraw(keccak256("nonexistent"), 100e6);
+    function test_shares_previewDeposit_firstDeposit() public {
+        uint256 previewed = depositLogic.previewDeposit(address(tokenUSDC), 1_000e6);
+        // First deposit: 1:1 minus MINIMUM_SHARES
+        assertEq(previewed, 1_000e6 - 1000, "preview first deposit");
     }
 
-    function test_Withdraw_RevertsInactiveVault() public {
-        _depositUSDC(alice, 100e6);
-        dl.setVaultActive(VAULT_USDC, false);
-
-        vm.expectRevert(DepositLogic.VaultNotActive.selector);
-        dl.withdraw(VAULT_USDC, 50e6);
+    function test_shares_previewRedeem() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        uint256 aliceShares = depositLogic.getAssetPosition(address(tokenUSDC), alice).shares;
+        uint256 previewed = depositLogic.previewRedeem(address(tokenUSDC), aliceShares);
+        assertEq(previewed, 1_000e6, "preview redeem returns original assets");
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 8. Query Functions (Queries work)
-    // ─────────────────────────────────────────────────────────────────────────
+    function test_shares_pricePerShare() public {
+        // Before any deposits: pricePerShare = PRECISION (1e18)
+        assertEq(depositLogic.pricePerShare(address(tokenUSDC)), 1e18);
 
-    function test_Query_SharePrice_Initial() public view {
-        assertEq(dl.getSharePrice(VAULT_USDC), PRECISION, "initial share price 1.0");
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        // After deposit: supply = 1_000e6 - 1000, TVL = 1_000e6
+        // pps = 1_000e6 * 1e18 / (1_000e6 - 1000) ≈ 1e18 + small
+        assertGt(depositLogic.pricePerShare(address(tokenUSDC)), 1e18);
     }
 
-    function test_Query_SharePrice_AfterDeposits() public {
-        _depositUSDC(alice, 100e6);
-        // 100 deposits / 100 shares = 1.0
-        assertApproxEqRel(dl.getSharePrice(VAULT_USDC), PRECISION, 1e14);
+    function test_shares_multipleAssetsIndependent() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        _deposit(alice, address(tokenWETH), 10 ether);
+        uint256 usdcPreview = depositLogic.previewDeposit(address(tokenUSDC), 500e6);
+        uint256 wethPreview = depositLogic.previewDeposit(address(tokenWETH), 5 ether);
+        assertTrue(usdcPreview > 0, "USDC preview independent");
+        assertTrue(wethPreview > 0, "WETH preview independent");
     }
 
-    function test_Query_GetVaultStats() public {
-        _depositUSDC(alice, 100e6);
-        _depositUSDC(bob, 200e6);
+    // ══════════════════════════════════════════════════════════════════════════
+    // 6. Multi-Asset Support (Assets are supported)
+    // ══════════════════════════════════════════════════════════════════════════
 
-        (
-            address asset,
-            bool active,
-            uint256 totalDeposits,
-            uint256 totalShares,
-            uint256 sharePrice,
-            uint256 depositCount
-        ) = dl.getVaultStats(VAULT_USDC);
-
-        assertEq(asset, address(usdc));
-        assertTrue(active);
-        assertEq(totalDeposits, 300e6);
-        assertEq(totalShares, 300e6);
-        assertApproxEqRel(sharePrice, PRECISION, 1e14);
-        assertEq(depositCount, 2);
+    function test_multiAsset_depositUSDC() public {
+        uint256 shares = _deposit(alice, address(tokenUSDC), 1_000e6);
+        assertGt(shares, 0);
+        DepositLogic.AssetPosition memory pos = depositLogic.getAssetPosition(address(tokenUSDC), alice);
+        assertEq(pos.totalDeposited, 1_000e6);
     }
 
-    function test_Query_GetVaultStats_Empty() public {
-        (
-            address asset,
-            bool active,
-            uint256 totalDeposits,
-            uint256 totalShares,
-            uint256 sharePrice,
-            uint256 depositCount
-        ) = dl.getVaultStats(VAULT_USDC);
-
-        assertEq(asset, address(usdc));
-        assertTrue(active);
-        assertEq(totalDeposits, 0);
-        assertEq(totalShares, 0);
-        assertEq(sharePrice, PRECISION);
-        assertEq(depositCount, 0);
+    function test_multiAsset_depositWETH() public {
+        uint256 shares = _deposit(alice, address(tokenWETH), 5 ether);
+        assertGt(shares, 0);
+        DepositLogic.AssetPosition memory pos = depositLogic.getAssetPosition(address(tokenWETH), alice);
+        assertEq(pos.totalDeposited, 5 ether);
     }
 
-    function test_Query_GetVaultStats_RevertsNonExistent() public {
-        vm.expectRevert(DepositLogic.VaultDoesNotExist.selector);
-        dl.getVaultStats(keccak256("nonexistent"));
+    function test_multiAsset_depositWBTC() public {
+        uint256 wbtcAmount = 10 * 1e8;
+        uint256 shares = _deposit(alice, address(tokenWBTC), wbtcAmount);
+        assertGt(shares, 0);
+        DepositLogic.AssetPosition memory pos = depositLogic.getAssetPosition(address(tokenWBTC), alice);
+        assertEq(pos.totalDeposited, wbtcAmount);
     }
 
-    function test_Query_GetDepositHistory_Empty() public {
-        DepositLogic.DepositRecord[] memory history = dl.getDepositHistory(VAULT_USDC);
-        assertEq(history.length, 0);
+    function test_multiAsset_depositAllAssets() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        _deposit(alice, address(tokenWETH), 5 ether);
+        _deposit(alice, address(tokenWBTC), 10 * 1e8);
+
+        assertEq(depositLogic.getAssetPosition(address(tokenUSDC), alice).totalDeposited, 1_000e6);
+        assertEq(depositLogic.getAssetPosition(address(tokenWETH), alice).totalDeposited, 5 ether);
+        assertEq(depositLogic.getAssetPosition(address(tokenWBTC), alice).totalDeposited, 10 * 1e8);
     }
 
-    function test_Query_GetDepositCount_Empty() public {
-        assertEq(dl.getDepositCount(VAULT_USDC), 0);
+    function test_multiAsset_assetTVL() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        _deposit(bob, address(tokenUSDC), 500e6);
+        assertEq(depositLogic.assetTVL(address(tokenUSDC)), 1_500e6);
     }
 
-    function test_Query_GetVaultIds() public view {
-        bytes32[] memory ids = dl.getVaultIds();
-        assertEq(ids.length, 3);
+    // ══════════════════════════════════════════════════════════════════════════
+    // 7. Withdrawal Logic
+    // ══════════════════════════════════════════════════════════════════════════
+
+    function test_withdraw_fullWithdrawal() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        uint256 aliceShares = depositLogic.getAssetPosition(address(tokenUSDC), alice).shares;
+        uint256 balanceBefore = tokenUSDC.balanceOf(alice);
+
+        vm.prank(alice);
+        uint256 assets = depositLogic.withdraw(address(tokenUSDC), aliceShares, alice);
+
+        assertEq(assets, 1_000e6);
+        assertEq(tokenUSDC.balanceOf(alice), balanceBefore + 1_000e6);
+        assertEq(tokenUSDC.balanceOf(address(depositLogic)), 0);
     }
 
-    function test_Query_GetVaultCount() public view {
-        assertEq(dl.getVaultCount(), 3);
+    function test_withdraw_partialWithdrawal() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        uint256 aliceShares = depositLogic.getAssetPosition(address(tokenUSDC), alice).shares;
+        uint256 halfShares = aliceShares / 2;
+
+        vm.prank(alice);
+        uint256 assets = depositLogic.withdraw(address(tokenUSDC), halfShares, alice);
+
+        assertEq(assets, 500e6);
+        assertEq(tokenUSDC.balanceOf(address(depositLogic)), 500e6);
+        DepositLogic.AssetPosition memory pos = depositLogic.getAssetPosition(address(tokenUSDC), alice);
+        assertEq(pos.shares, halfShares);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 9. Reentrancy Protection
-    // ─────────────────────────────────────────────────────────────────────────
+    function test_withdraw_updatesState() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        uint256 aliceShares = depositLogic.getAssetPosition(address(tokenUSDC), alice).shares;
 
-    function test_ReentrancyGuard_Deposit() public {
-        // Deposit should be protected by nonReentrant
-        _depositUSDC(alice, 100e6);
-        assertEq(usdc.balanceOf(address(dl)), 100e6);
+        vm.prank(alice);
+        depositLogic.withdraw(address(tokenUSDC), aliceShares, alice);
+
+        assertEq(depositLogic.assetTotalDeposited(address(tokenUSDC)), 0);
+        assertEq(depositLogic.assetTotalShares(address(tokenUSDC)), 0);
+        assertEq(depositLogic.totalValueLocked(), 0);
     }
 
-    function test_ReentrancyGuard_Withdraw() public {
-        _depositUSDC(alice, 100e6);
-        dl.withdraw(VAULT_USDC, 50e6);
-        assertEq(usdc.balanceOf(address(dl)), 50e6);
-    }
+    function test_withdraw_revertsInsufficientShares() public {
+        _deposit(alice, address(tokenUSDC), 500e6);
+        uint256 aliceShares = depositLogic.getAssetPosition(address(tokenUSDC), alice).shares;
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 10. Fuzz Tests
-    // ─────────────────────────────────────────────────────────────────────────
-
-    function testFuzz_Deposit_BalanceMatches(uint128 amount) public {
-        vm.assume(amount > 0 && amount <= usdc.balanceOf(alice));
-        uint256 balanceBefore = usdc.balanceOf(alice);
-        _depositUSDC(alice, uint256(amount));
-        assertEq(usdc.balanceOf(alice), balanceBefore - uint256(amount));
-        assertEq(usdc.balanceOf(address(dl)), uint256(amount));
-    }
-
-    function testFuzz_Deposit_SharesMatchFirstDeposit(uint128 amount) public {
-        vm.assume(amount > 0 && amount <= usdc.balanceOf(alice));
-        uint256 shares = _depositUSDC(alice, uint256(amount));
-        assertEq(shares, uint256(amount), "first deposit 1:1");
-    }
-
-    function testFuzz_Deposit_ProportionalShares(
-        uint128 firstAmount,
-        uint128 secondAmount
-    ) public {
-        vm.assume(firstAmount > 0 && firstAmount <= usdc.balanceOf(alice));
-        vm.assume(secondAmount > 0 && secondAmount <= usdc.balanceOf(bob));
-
-        _depositUSDC(alice, uint256(firstAmount));
-        uint256 bobShares = _depositUSDC(bob, uint256(secondAmount));
-
-        // Bob's shares should be proportional: secondAmount * firstAmount / firstAmount = secondAmount
-        assertApproxEqRel(
-            bobShares,
-            uint256(secondAmount),
-            1e14,
-            "proportional shares"
+        vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DepositLogic.InsufficientShares.selector,
+                alice, aliceShares + 1, aliceShares
+            )
         );
+        depositLogic.withdraw(address(tokenUSDC), aliceShares + 1, alice);
     }
 
-    function testFuzz_MultipleDeposits_Tracking(
-        uint128 dep1,
-        uint128 dep2,
-        uint128 dep3
+    function test_withdraw_revertsZeroShares() public {
+        vm.expectRevert(DepositLogic.ZeroShares.selector);
+        depositLogic.withdraw(address(tokenUSDC), 0, alice);
+    }
+
+    function test_withdraw_revertsUnsupportedAsset() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(DepositLogic.AssetNotSupported.selector, address(0x123))
+        );
+        depositLogic.withdraw(address(0x123), 100, alice);
+    }
+
+    function test_withdraw_revertsInvalidRecipient() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        uint256 aliceShares = depositLogic.getAssetPosition(address(tokenUSDC), alice).shares;
+
+        vm.prank(alice);
+        vm.expectRevert(DepositLogic.InvalidRecipient.selector);
+        depositLogic.withdraw(address(tokenUSDC), aliceShares, address(0));
+    }
+
+    function test_withdraw_emitsEvent() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        uint256 aliceShares = depositLogic.getAssetPosition(address(tokenUSDC), alice).shares;
+
+        vm.prank(alice);
+        vm.expectEmit(true, true, true, true);
+        emit AssetWithdrawn(alice, address(tokenUSDC), 1_000e6, aliceShares);
+        depositLogic.withdraw(address(tokenUSDC), aliceShares, alice);
+    }
+
+    function test_withdraw_revertsWhenPaused() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        uint256 aliceShares = depositLogic.getAssetPosition(address(tokenUSDC), alice).shares;
+
+        depositLogic.pause();
+        vm.prank(alice);
+        vm.expectRevert();
+        depositLogic.withdraw(address(tokenUSDC), aliceShares, alice);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // 8. Pause/Unpause
+    // ══════════════════════════════════════════════════════════════════════════
+
+    function test_pause_onlyOwner() public {
+        vm.prank(nonOwner);
+        vm.expectRevert();
+        depositLogic.pause();
+    }
+
+    function test_pause_preventsDeposits() public {
+        depositLogic.pause();
+        assertTrue(depositLogic.paused());
+        vm.expectRevert();
+        _deposit(alice, address(tokenUSDC), 100);
+    }
+
+    function test_unpause_allowsDeposits() public {
+        depositLogic.pause();
+        depositLogic.unpause();
+        assertFalse(depositLogic.paused());
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        assertEq(tokenUSDC.balanceOf(address(depositLogic)), 1_000e6);
+    }
+
+    function test_unpause_onlyOwner() public {
+        depositLogic.pause();
+        vm.prank(nonOwner);
+        vm.expectRevert();
+        depositLogic.unpause();
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // 9. Query Functions (Queries work)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    function test_query_totalValueLocked() public {
+        assertEq(depositLogic.totalValueLocked(), 0);
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        assertEq(depositLogic.totalValueLocked(), 1_000e6);
+        _deposit(alice, address(tokenWETH), 5 ether);
+        assertEq(depositLogic.totalValueLocked(), 1_000e6 + 5 ether);
+    }
+
+    function test_query_totalShares() public {
+        assertEq(depositLogic.totalShares(), 0);
+        uint256 shares = _deposit(alice, address(tokenUSDC), 1_000e6);
+        assertEq(depositLogic.totalShares(), shares);
+    }
+
+    function test_query_isAssetSupported() public {
+        assertTrue(depositLogic.isAssetSupported(address(tokenUSDC)));
+        assertFalse(depositLogic.isAssetSupported(address(0x123)));
+    }
+
+    function test_query_getAssetConfig() public {
+        DepositLogic.AssetConfig memory config = depositLogic.getAssetConfig(address(tokenUSDC));
+        assertTrue(config.isActive);
+        assertEq(config.depositCap, DEPOSIT_CAP);
+        assertEq(config.minimumDeposit, MIN_DEPOSIT);
+    }
+
+    function test_query_getAssetPosition() public {
+        DepositLogic.AssetPosition memory pos = depositLogic.getAssetPosition(address(tokenUSDC), alice);
+        assertEq(pos.totalDeposited, 0);
+        assertEq(pos.shares, 0);
+
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        pos = depositLogic.getAssetPosition(address(tokenUSDC), alice);
+        assertEq(pos.totalDeposited, 1_000e6);
+        assertGt(pos.shares, 0);
+    }
+
+    function test_query_getDepositHistory() public {
+        DepositLogic.DepositRecord[] memory history = depositLogic.getDepositHistory(alice);
+        assertEq(history.length, 0);
+
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        history = depositLogic.getDepositHistory(alice);
+        assertEq(history.length, 1);
+    }
+
+    function test_query_depositCount() public {
+        assertEq(depositLogic.depositCount(alice), 0);
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        assertEq(depositLogic.depositCount(alice), 1);
+    }
+
+    function test_query_previewDeposit() public {
+        uint256 previewed = depositLogic.previewDeposit(address(tokenUSDC), 1_000e6);
+        assertEq(previewed, 1_000e6 - 1000);
+    }
+
+    function test_query_previewRedeem() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        uint256 aliceShares = depositLogic.getAssetPosition(address(tokenUSDC), alice).shares;
+        uint256 previewed = depositLogic.previewRedeem(address(tokenUSDC), aliceShares);
+        assertEq(previewed, 1_000e6);
+    }
+
+    function test_query_pricePerShare() public {
+        assertEq(depositLogic.pricePerShare(address(tokenUSDC)), 1e18);
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        assertGt(depositLogic.pricePerShare(address(tokenUSDC)), 1e18);
+    }
+
+    function test_query_assetTVL() public {
+        assertEq(depositLogic.assetTVL(address(tokenUSDC)), 0);
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        assertEq(depositLogic.assetTVL(address(tokenUSDC)), 1_000e6);
+    }
+
+    function test_query_getSupportedAssets() public view {
+        address[] memory assets = depositLogic.getSupportedAssets();
+        assertEq(assets.length, 3);
+    }
+
+    function test_query_supportedAssetsCount() public view {
+        assertEq(depositLogic.supportedAssetsCount(), 3);
+    }
+
+    function test_query_getUserSummary() public {
+        (uint256 totalDeposits, uint256 totalWithdrawals, uint256 positionCount) =
+            depositLogic.getUserSummary(alice);
+        assertEq(totalDeposits, 0);
+        assertEq(totalWithdrawals, 0);
+        assertEq(positionCount, 0);
+
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        _deposit(alice, address(tokenWETH), 5 ether);
+
+        (totalDeposits, totalWithdrawals, positionCount) = depositLogic.getUserSummary(alice);
+        assertEq(totalDeposits, 1_000e6 + 5 ether);
+        assertEq(positionCount, 2);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // 10. Access Control
+    // ══════════════════════════════════════════════════════════════════════════
+
+    function test_accessControl_onlyOwner_addAsset() public {
+        vm.prank(nonOwner);
+        vm.expectRevert();
+        depositLogic.addAsset(address(1), DEPOSIT_CAP, 0);
+    }
+
+    function test_accessControl_onlyOwner_removeAsset() public {
+        vm.prank(nonOwner);
+        vm.expectRevert();
+        depositLogic.removeAsset(address(tokenUSDC));
+    }
+
+    function test_accessControl_onlyOwner_setDepositCap() public {
+        vm.prank(nonOwner);
+        vm.expectRevert();
+        depositLogic.setDepositCap(address(tokenUSDC), 200_000 ether);
+    }
+
+    function test_accessControl_onlyOwner_setMinimumDeposit() public {
+        vm.prank(nonOwner);
+        vm.expectRevert();
+        depositLogic.setMinimumDeposit(address(tokenUSDC), 2 ether);
+    }
+
+    function test_accessControl_onlyOwner_pause() public {
+        vm.prank(nonOwner);
+        vm.expectRevert();
+        depositLogic.pause();
+    }
+
+    function test_accessControl_onlyOwner_unpause() public {
+        vm.prank(nonOwner);
+        vm.expectRevert();
+        depositLogic.unpause();
+    }
+
+    function test_accessControl_onlyOwner_recoverToken() public {
+        vm.prank(nonOwner);
+        vm.expectRevert();
+        depositLogic.recoverToken(address(tokenUSDC), 100, alice);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // 11. Edge Cases
+    // ══════════════════════════════════════════════════════════════════════════
+
+    function test_edgeCase_depositAfterWithdraw() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        uint256 aliceShares = depositLogic.getAssetPosition(address(tokenUSDC), alice).shares;
+        uint256 halfShares = aliceShares / 2;
+
+        vm.prank(alice);
+        depositLogic.withdraw(address(tokenUSDC), halfShares, alice);
+
+        _deposit(alice, address(tokenUSDC), 200e6);
+        DepositLogic.AssetPosition memory pos = depositLogic.getAssetPosition(address(tokenUSDC), alice);
+        assertEq(pos.totalDeposited, 1_200e6);
+    }
+
+    function test_edgeCase_depositAfterFullWithdrawal() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        uint256 aliceShares = depositLogic.getAssetPosition(address(tokenUSDC), alice).shares;
+
+        vm.prank(alice);
+        depositLogic.withdraw(address(tokenUSDC), aliceShares, alice);
+
+        _deposit(alice, address(tokenUSDC), 500e6);
+        DepositLogic.AssetPosition memory pos = depositLogic.getAssetPosition(address(tokenUSDC), alice);
+        assertEq(pos.totalDeposited, 500e6);
+    }
+
+    function test_edgeCase_multipleUsersSameAsset() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        _deposit(bob, address(tokenUSDC), 2_000e6);
+        _deposit(charlie, address(tokenUSDC), 3_000e6);
+        assertEq(depositLogic.assetTVL(address(tokenUSDC)), 6_000e6);
+    }
+
+    function test_edgeCase_differentDecimals() public {
+        _deposit(alice, address(tokenUSDC), 1_000e6);
+        _deposit(alice, address(tokenWETH), 1 ether);
+        DepositLogic.AssetPosition memory usdcPos = depositLogic.getAssetPosition(address(tokenUSDC), alice);
+        DepositLogic.AssetPosition memory wethPos = depositLogic.getAssetPosition(address(tokenWETH), alice);
+        assertEq(usdcPos.totalDeposited, 1_000e6);
+        assertEq(wethPos.totalDeposited, 1 ether);
+    }
+
+    function test_edgeCase_recoverToken() public {
+        // Send tokens directly to the contract (not through deposit)
+        tokenUSDC.mint(address(depositLogic), 1000);
+        uint256 balanceBefore = tokenUSDC.balanceOf(alice);
+
+        depositLogic.recoverToken(address(tokenUSDC), 1000, alice);
+        assertEq(tokenUSDC.balanceOf(alice), balanceBefore + 1000);
+    }
+
+    function test_edgeCase_recoverToken_revertsZeroAddress() public {
+        vm.expectRevert(DepositLogic.ZeroAddress.selector);
+        depositLogic.recoverToken(address(0), 100, alice);
+    }
+
+    function test_edgeCase_recoverToken_revertsZeroAmount() public {
+        vm.expectRevert(DepositLogic.ZeroAssets.selector);
+        depositLogic.recoverToken(address(tokenUSDC), 0, alice);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // 12. Fuzz Tests
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /// @dev Fuzz: deposit amount must be >= minimumDeposit
+    function testFuzz_deposit_revertsBelowMinimum(uint96 amount) public {
+        uint256 minDeposit = depositLogic.getAssetConfig(address(tokenUSDC)).minimumDeposit;
+        vm.assume(amount > 0 && amount < minDeposit);
+        vm.expectRevert(
+            abi.encodeWithSelector(DepositLogic.DepositTooSmall.selector, address(tokenUSDC), minDeposit, amount)
+        );
+        depositLogic.deposit(address(tokenUSDC), amount, alice);
+    }
+
+    /// @dev Fuzz: deposit and withdraw roundtrip preserves value
+    function testFuzz_depositWithdrawRoundtrip(uint96 depositAmount) public {
+        uint256 minDeposit = depositLogic.getAssetConfig(address(tokenUSDC)).minimumDeposit;
+        vm.assume(depositAmount >= minDeposit && depositAmount <= 50_000 ether);
+
+        vm.startPrank(alice);
+        tokenUSDC.mint(alice, depositAmount);
+        tokenUSDC.approve(address(depositLogic), depositAmount);
+        uint256 shares = depositLogic.deposit(address(tokenUSDC), depositAmount, alice);
+        vm.stopPrank();
+
+        assertGt(shares, 0);
+
+        vm.prank(alice);
+        uint256 assetsReturned = depositLogic.withdraw(address(tokenUSDC), shares, alice);
+
+        // Should get back approximately the same amount (minus rounding)
+        assertApproxEqAbs(assetsReturned, depositAmount, 1);
+    }
+
+    /// @dev Fuzz: multiple deposits from different users
+    function testFuzz_multipleDepositors(
+        uint96 amount1,
+        uint96 amount2,
+        uint96 amount3
     ) public {
-        vm.assume(dep1 > 0 && dep1 <= usdc.balanceOf(alice));
-        vm.assume(dep2 > 0 && dep2 <= usdc.balanceOf(alice));
-        vm.assume(dep3 > 0 && dep3 <= usdc.balanceOf(bob));
+        uint256 minDeposit = depositLogic.getAssetConfig(address(tokenUSDC)).minimumDeposit;
+        vm.assume(amount1 >= minDeposit && amount1 <= 30_000 ether);
+        vm.assume(amount2 >= minDeposit && amount2 <= 30_000 ether);
+        vm.assume(amount3 >= minDeposit && amount3 <= 30_000 ether);
 
-        uint256 total = uint256(dep1) + uint256(dep2) + uint256(dep3);
+        _deposit(alice, address(tokenUSDC), amount1);
+        _deposit(bob, address(tokenUSDC), amount2);
+        _deposit(charlie, address(tokenUSDC), amount3);
 
-        _depositUSDC(alice, uint256(dep1));
-        _depositUSDC(alice, uint256(dep2));
-        _depositUSDC(bob, uint256(dep3));
-
-        assertEq(dl.getTotalDeposits(VAULT_USDC), total);
-        assertEq(dl.getDepositCount(VAULT_USDC), 3);
-        assertEq(dl.getDepositBalance(VAULT_USDC, alice), uint256(dep1) + uint256(dep2));
-        assertEq(dl.getDepositBalance(VAULT_USDC, bob), uint256(dep3));
-    }
-
-    function testFuzz_SharePrice_NeverZero(uint128 amount) public {
-        vm.assume(amount > 0 && amount <= usdc.balanceOf(alice));
-        _depositUSDC(alice, uint256(amount));
-        assertGt(dl.getSharePrice(VAULT_USDC), 0, "share price always positive");
-    }
-
-    function testFuzz_CalculateShares_RoundTrip(uint128 amount) public {
-        vm.assume(amount > 0 && amount <= usdc.balanceOf(alice));
-        _depositUSDC(alice, uint256(amount));
-
-        uint256 shares = dl.calculateShares(VAULT_USDC, uint256(amount));
-        uint256 backToAmount = dl.calculateAssets(VAULT_USDC, shares);
-        // Should be approximately equal (may have rounding)
-        assertApproxEqRel(backToAmount, uint256(amount), 1e14, "round trip");
-    }
-
-    function testFuzz_DifferentAssets_Independent(
-        uint128 usdcAmount,
-        uint128 wethAmount
-    ) public {
-        vm.assume(usdcAmount > 0 && usdcAmount <= usdc.balanceOf(alice));
-        vm.assume(wethAmount > 0 && wethAmount <= weth.balanceOf(alice));
-
-        _depositUSDC(alice, uint256(usdcAmount));
-        _depositWETH(alice, uint256(wethAmount));
-
-        assertEq(dl.getTotalDeposits(VAULT_USDC), uint256(usdcAmount));
-        assertEq(dl.getTotalDeposits(VAULT_WETH), uint256(wethAmount));
-    }
-
-    function testFuzz_Withdraw_RoundTrip(uint128 amount) public {
-        vm.assume(amount > 0 && amount <= usdc.balanceOf(alice));
-        _depositUSDC(alice, uint256(amount));
-
-        uint256 withdrawn = dl.withdraw(VAULT_USDC, uint256(amount));
-        assertEq(withdrawn, uint256(amount), "full withdrawal returns correct amount");
-        assertEq(dl.getDepositBalance(VAULT_USDC, alice), 0, "balance zero after full withdrawal");
-        assertEq(usdc.balanceOf(address(dl)), 0, "contract balance zero after full withdrawal");
-    }
-
-    function testFuzz_Withdraw_Partial(uint128 depositAmount, uint128 withdrawShares) public {
-        vm.assume(depositAmount > 0 && depositAmount <= usdc.balanceOf(alice));
-        vm.assume(withdrawShares > 0 && withdrawShares <= depositAmount);
-
-        _depositUSDC(alice, uint256(depositAmount));
-        uint256 withdrawn = dl.withdraw(VAULT_USDC, uint256(withdrawShares));
-
-        assertEq(withdrawn, uint256(withdrawShares), "partial withdrawal proportional");
         assertEq(
-            dl.getDepositBalance(VAULT_USDC, alice),
-            uint256(depositAmount) - uint256(withdrawShares),
-            "remaining balance correct"
+            depositLogic.assetTVL(address(tokenUSDC)),
+            uint256(amount1) + uint256(amount2) + uint256(amount3)
         );
     }
 }
