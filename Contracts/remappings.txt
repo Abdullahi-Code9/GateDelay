@@ -1,6 +1,4 @@
+# Source root: Contracts/src (Foundry src = "src")
 @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
-forge-std/=lib/forge-std/src/
-@prb/math/=lib/prb-math/
-
 forge-std/=lib/forge-std/src/
 @prb/math/=lib/prb-math/
