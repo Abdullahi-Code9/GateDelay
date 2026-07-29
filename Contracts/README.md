@@ -1,4 +1,4 @@
-﻿# GateDelay Contracts
+# GateDelay Contracts
 
 Foundry project for GateDelay smart contracts.
 
@@ -11,7 +11,7 @@ Foundry project for GateDelay smart contracts.
 | `script/` | Deploy scripts |
 | `lib/` | Dependencies (OpenZeppelin, forge-std, prb-math) |
 
-Former `contracts/` and root-level `.sol` files (`Burnable.sol`, `FlashLoanProtection.sol`, `Liquidation.sol`, `MarketMinter.sol`, `RoleManager.sol`) were consolidated into `src/`. Do not add new production contracts outside `src/`.
+Former `Contracts/contracts/`, root-level `contracts/` (Burnable, FlashLoanProtection, Liquidation, MarketMinter, RoleManager), and any `Contracts/*.sol` at the package root were consolidated into `src/`. Do not add new production contracts outside `src/`.
 
 ## Documentation
 
