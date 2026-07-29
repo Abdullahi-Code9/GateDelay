@@ -4,8 +4,19 @@
   "private": true,
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
+    "start:express": "node server.js",
+    "start:express:dev": "node --watch server.js",
+    "start:nest": "nest start",
+    "start:nest:dev": "nest start --watch",
+    "start:nest:debug": "nest start --debug --watch",
+    "start:nest:prod": "node dist/main",
+    "build": "nest build",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "smoke": "node scripts/smoke.js"
   },
   "dependencies": {
     "bull": "^4.16.5",
