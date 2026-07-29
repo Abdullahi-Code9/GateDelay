@@ -1,15 +1,28 @@
+# ------------------------------------------------------------
+# Toolchain pin — keep this in sync with rust-toolchain.toml
+# and the forge version used in CI (.github/workflows/ci.yml).
+# Bump deliberately; never let it float.
+# ------------------------------------------------------------
+[toolchain]
+channel = "stable"           # tracks the latest stable forge release
+forge   = "1.1.0"            # minimum forge version; bump when you need new features
+
 [profile.default]
 src            = "contracts"
 out            = "out"
 libs           = ["lib"]
 test           = "test"
 script         = "script"
-solc           = "0.8.28"
-optimizer      = true
-optimizer_runs = 200
-via_ir         = true
-auto_detect_solc = true
-offline = false
+
+# Solidity compiler — pinned to an exact version.
+# Remove auto_detect_solc so this value is always honoured.
+solc             = "0.8.28"
+auto_detect_solc = false     # must be false when solc is pinned
+
+optimizer        = true
+optimizer_runs   = 200
+via_ir           = true
+offline          = false
 
 [profile.default.fuzz]
 runs = 256
