@@ -1,13 +1,17 @@
-## Foundry
+# GateDelay Contracts
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Foundry project for GateDelay smart contracts.
 
-Foundry consists of:
+## Layout (single source of truth)
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+| Path | Purpose |
+|------|---------|
+| `src/` | **All production contracts** (Foundry `src` root) |
+| `test/` | Forge tests |
+| `script/` | Deploy scripts |
+| `lib/` | Dependencies (OpenZeppelin, forge-std, prb-math) |
+
+Former `Contracts/contracts/`, root-level `contracts/` (Burnable, FlashLoanProtection, Liquidation, MarketMinter, RoleManager), and any `Contracts/*.sol` at the package root were consolidated into `src/`. Do not add new production contracts outside `src/`.
 
 ## Documentation
 
@@ -48,7 +52,7 @@ $ anvil
 ### Deploy
 
 ```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+$ forge script script/<DeployScript>.s.sol --rpc-url <your_rpc_url> --private-key <your_private_key>
 ```
 
 ### Cast
