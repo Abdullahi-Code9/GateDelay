@@ -68,23 +68,33 @@ The backend exposes health check endpoints for monitoring and CI/CD probes:
 ## Compile and run the project
 
 ```bash
-# Express server
-$ npm run start:express
-
-# Express server with watch mode
-$ npm run start:express:dev
-
 # NestJS development
-$ npm run start:nest
+$ npm run start
 
 # NestJS watch mode
-$ npm run start:nest:dev
+$ npm run start:dev
 
 # NestJS debug mode
-$ npm run start:nest:debug
+$ npm run start:debug
 
 # NestJS production
-$ npm run start:nest:prod
+$ npm run start:prod
+```
+
+## Route module verification (`Backend/routes/api.example.js`)
+
+Use this canonical path from repo root:
+
+```bash
+cd Backend
+npm install
+npm run test:api-example
+```
+
+Expected console output includes:
+
+```text
+[api.example.js] Initializing API example routes...
 ```
 
 ## Build the project
