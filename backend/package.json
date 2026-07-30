@@ -48,6 +48,8 @@
     "class-validator": "^0.15.1",
     "d3": "^6.7.0",
     "ethers": "^6.16.0",
+    "express": "^4.21.0",
+    "cors": "^2.8.5",
     "groq-sdk": "0.9.1",
     "ioredis": "^5.10.1",
     "json2csv": "^6.0.0-alpha.2",
