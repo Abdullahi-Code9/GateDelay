@@ -25,6 +25,28 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## GateDelay Backend Setup
+
+**For complete setup instructions, prerequisites, and troubleshooting, see [SETUP.md](./SETUP.md)**
+
+### Quick Start
+
+**Prerequisites**: Node.js >= 20.11, MongoDB, Redis
+
+```bash
+# 1. Install dependencies
+$ npm install
+
+# 2. Configure environment
+$ cp .env.example .env
+# Edit .env with your configuration
+
+# 3. Start external services (MongoDB, Redis)
+
+# 4. Build (⚠️ currently has build errors - see SETUP.md)
+$ npm run build
+```
+
 ## Project setup
 
 ```bash
