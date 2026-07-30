@@ -44,7 +44,7 @@ import { VerificationModule } from './verification/verification.module';
 import { MarketMetadataModule } from './market-metadata/market-metadata.module';
 import { EventNotificationModule } from './event-notifications/event-notification.module';
 import { BridgeModule } from './bridge/bridge.module';
-import { HealthModule } from './health/health.module';
+import { NftModule } from './nft/nft.module';
 
 @Module({
   imports: [
@@ -110,7 +110,7 @@ import { HealthModule } from './health/health.module';
     MarketMetadataModule,
     EventNotificationModule,
     BridgeModule,
-    HealthModule,
+    NftModule,
   ],
   controllers: [AppController],
   providers: [AppService],
