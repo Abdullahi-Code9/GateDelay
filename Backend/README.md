@@ -53,6 +53,23 @@ $ npm run build
 $ npm install
 ```
 
+## AML Compliance Endpoint
+
+The backend includes an AML (Anti-Money Laundering) compliance route handler at `Backend/routes/aml.js`.
+
+**Routes:**
+- `POST /screen` — Screen a user against AML watchlists (requires auth)
+- `POST /flag` — Record suspicious-activity flags (requires auth)
+- `GET /report/:userId` — Generate a screening report for a date range (requires auth)
+- `POST /file-report` — Submit regulatory filings (requires auth)
+
+**Quick smoke test:**
+```bash
+npm run test:aml
+```
+
+See `Backend/routes/aml.js` and `Backend/services/amlService.js` for full inline documentation including the threat model and security assumptions.
+
 ## Health endpoints
 
 The backend exposes health check endpoints for monitoring and CI/CD probes:
