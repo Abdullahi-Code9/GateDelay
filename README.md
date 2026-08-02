@@ -27,7 +27,7 @@ Outcome is a decentralized flight prediction market built on the Stellar network
 
 ## 📋 Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18+ recommended)
+- [Node.js](https://nodejs.org/) (v20+ required)
 - [Foundry](https://getfoundry.sh/) (Forge, Cast, Anvil)
 - [Git](https://git-scm.com/)
 
