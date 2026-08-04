@@ -82,10 +82,34 @@ jobs:
         run: npm run test
         working-directory: Backend
 
+  contracts:
+    name: Solidity Contracts (Forge)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Show Forge version
+        run: forge --version
+
+      - name: Run Forge fmt check
+        run: forge fmt --check
+
+      - name: Run Forge build
+        run: forge build --sizes
+
+      - name: Run Forge tests
+        run: forge test -vvv
+
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, contracts]
     # Only deploy when pushing/merging directly to main or master
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     steps:
