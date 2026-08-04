@@ -11,6 +11,32 @@ on:
       - master
 
 jobs:
+  contracts:
+    name: Contracts — Foundry Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry (pinned version)
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: "v1.1.0"   # keep in sync with foundry.toml [toolchain] forge
+
+      - name: Install solc 0.8.28
+        run: forge install
+        working-directory: Contracts
+
+      - name: Compile contracts
+        run: forge build --force
+        working-directory: Contracts
+
+      - name: Run Foundry tests
+        run: forge test -vvv
+        working-directory: Contracts
+
   lint:
     name: Lint & Code Quality
     runs-on: ubuntu-latest
