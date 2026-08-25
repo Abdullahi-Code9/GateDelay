@@ -1,10 +1,10 @@
 "use client";
+
 import { ConnectKitProvider, createConfig } from "@particle-network/connectkit";
 import { authWalletConnectors } from "@particle-network/connectkit/auth";
 import { evmWalletConnectors } from "@particle-network/connectkit/evm";
 import { mantle } from "viem/chains";
 import { ConnectKitBridge } from "./ConnectKitBridge";
-import { isParticleConnectKitConfigured } from "../../lib/walletDetection";
 
 // Config is created lazily to avoid SSR crashes when env vars are absent
 let config: ReturnType<typeof createConfig> | null = null;
@@ -28,13 +28,11 @@ function getConfig() {
   return config;
 }
 
+/**
+ * Only loaded when Particle credentials are configured
+ * (`ParticleClientWrapper` gates the dynamic import).
+ */
 export function ParticleProvider({ children }: { children: React.ReactNode }) {
-  // Mount ConnectKit only when credentials exist — avoids hook/runtime failures
-  // when collaborators run the UI without wallet env vars.
-  if (!isParticleConnectKitConfigured()) {
-    return <>{children}</>;
-  }
-
   return (
     <ConnectKitProvider config={getConfig()}>
       <ConnectKitBridge>{children}</ConnectKitBridge>

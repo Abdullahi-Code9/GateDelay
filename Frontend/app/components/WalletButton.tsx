@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { useConnectKitBridge } from "./ConnectKitBridge";
+import { useConnectKitBridge } from "./ConnectKitBridgeContext";
 
 const ConnectModal = dynamic(
   () => import("../../components/wallet/ConnectModal"),

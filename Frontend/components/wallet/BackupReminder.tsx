@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAccount } from "@particle-network/connectkit";
 import { motion, AnimatePresence } from "framer-motion";
+import { useConnectKitBridge } from "../../app/components/ConnectKitBridgeContext";
 
 const STORAGE_KEY = "wallet_backup_status";
 
@@ -31,11 +31,11 @@ function writeStatus(status: BackupStatus): void {
  * 1. localStorage is not available on the server.  We never access it outside
  *    of useEffect / event handlers, so there is no server-side reference.
  *
- * 2. Hydration mismatch from wallet state.  `useAccount()` from Particle
- *    Network returns `isConnected: false` during SSR / the initial hydration
- *    render; the real value is only known after the client hydrates.  If we
- *    initialised `visible` from `isConnected` synchronously we would get a
- *    server/client mismatch warning.
+ * 2. Hydration mismatch from wallet state.  The ConnectKit bridge returns
+ *    `isConnected: false` when Particle is absent / during the initial
+ *    hydration render; the real value is only known after the client hydrates.
+ *    If we initialised `visible` from `isConnected` synchronously we would get
+ *    a server/client mismatch warning.
  *
  *    Solution: use a `mounted` flag.  The component renders nothing (null) on
  *    the first pass — matching the server output — and only reads
@@ -43,14 +43,11 @@ function writeStatus(status: BackupStatus): void {
  *    client.  This eliminates both the hydration warning and the brief flicker
  *    where a dismissed banner re-appears before the effect runs.
  *
- * Phase 2+ dependency
- * -------------------
- * If Particle Network ever exposes a server-safe wallet context (e.g. via
- * cookie-persisted session), the `mounted` guard can be removed and the
- * initial state derived server-side instead.
+ * Uses `useConnectKitBridge` (not ConnectKit `useAccount`) so the app shell
+ * still boots when Particle credentials are absent.
  */
 export default function BackupReminder() {
-  const { isConnected } = useAccount();
+  const { isConnected } = useConnectKitBridge();
 
   // `mounted` is false on the server and on the very first client render,
   // ensuring the hydrated markup matches the server-rendered markup (both
