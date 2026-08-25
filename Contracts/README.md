@@ -42,6 +42,50 @@ Dependencies are pulled from the repository's Foundry library remappings (`@open
 
 Known blocker: the repository currently has unrelated Solidity parsing issues in other contracts/tests, so a full `forge build` is not a reliable signal for the `FeeHandler` path. For this Phase 1 stabilization work, the verified build path for `FeeHandler` is the targeted command above.
 
+### RoleManager build and deploy notes
+
+`src/RoleManager.sol` is registry-backed access control on top of OpenZeppelin
+`AccessControlEnumerable` (v5.x, `lib/openzeppelin-contracts`).
+
+Verify with:
+
+```shell
+$ ./verify_rolemanager.sh
+```
+
+Verified with `forge 1.7.1` / `solc 0.8.28`: build succeeds, `forge fmt --check`
+is clean, and `test/RoleManager.t.sol` passes 27 tests (25 unit + 2 fuzz cases at
+256 runs each).
+
+Why a script rather than a bare `forge test`: as noted for `FeeHandler` above,
+Foundry compiles the entire tree before running anything, and roughly two dozen
+unrelated files in `src/` and `test/` currently have parse and type errors. That
+makes a repo-wide `forge build` or `forge test --match-contract` fail regardless
+of the state of this contract. `verify_rolemanager.sh` copies
+`src/RoleManager.sol` and `test/RoleManager.t.sol` into a temporary workspace
+with the same solc settings and the repo's own `lib/`, so a pass is a real
+signal for this contract. Requires submodules:
+`git submodule update --init --recursive`.
+
+**Constructor and deploy requirements**
+
+- The constructor takes **no arguments** and grants `DEFAULT_ADMIN_ROLE` to
+  `msg.sender`. The deploying account is therefore the sole admin. Deploying from
+  a script or factory makes *that contract* the admin, not the EOA behind it —
+  hand admin over explicitly if that is not what you want.
+- `DEFAULT_ADMIN_ROLE` is registered in the role set at construction, so a
+  co-admin can be appointed with `assignRole(0x00, newAdmin)`. Do that **before**
+  any admin renounces; there is no other recovery path and no timelock.
+- A role must be registered with `createRole` before `assignRole` will hand it
+  out. This is deliberate: an unregistered (e.g. mistyped) `bytes32` can never
+  become a live privileged role.
+- `grantRole` is disabled and always reverts with `RoleManager: use assignRole`.
+  Integrators written against stock `AccessControl` must be updated. `revokeRole`
+  keeps its usual signature but is gated on `DEFAULT_ADMIN_ROLE`.
+- `renounceRole` behaves as OpenZeppelin defines it and keeps `getRoles` in sync.
+
+Full API notes live in the NatSpec on the contract itself.
+
 ### Test
 
 ```shell
