@@ -26,6 +26,34 @@ npm install
 
 ```bash
 npm run dev
+```
+
+Use `npm run start:dev` for the NestJS development API. The migration REST API is owned by the Express entrypoint:
+
+```bash
+npm run express:dev
+```
+
+## Market migration API
+
+The market migration is discovered from `backend/migrations/001_init_markets.js` and exposed under `/api/migrations` by Express:
+
+- `GET /api/migrations/status` - show pending and applied migrations
+- `POST /api/migrations/execute` with `{ "name": "001_init_markets" }` - create the markets table
+- `POST /api/migrations/validate/001_init_markets` - verify migration integrity
+
+Run its smoke check with:
+
+```bash
+npm run test:migration
+```
+
+Migration environment variables:
+
+- `PORT` - Express port, default `4000`
+- `MONGODB_URI` - optional MongoDB URI; SQLite-only migrations continue if MongoDB is unavailable
+- `MIGRATIONS_DB_PATH` - optional SQLite file path, default `backend/data/migrations.sqlite`
+
 ## GateDelay Backend Setup
 
 **For complete setup instructions, prerequisites, and troubleshooting, see [SETUP.md](./SETUP.md)**
