@@ -42,3 +42,9 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Clipboard access is guarded as a browser-only API.
 - QR session timers are cleaned up on unmount to keep client transition paths stable during hydration.
 - Phase 2+: if server-rendered QR previews are required, add a lightweight server-safe placeholder before hydration.
+
+## ConnectKit bridge
+
+`app/components/ParticleClientWrapper.tsx` lazy-loads the client-only Particle provider in the root layout. When the public Particle variables are configured, `ParticleProvider` mounts `ConnectKitProvider` and `app/components/ConnectKitBridge.tsx` makes wallet state available to the navbar and wallet modal. When they are absent, the bridge's default context reports `resolutionStatus: "unavailable"` with setup guidance, while the rest of the app remains navigable.
+
+The bridge reports `disconnected`, `resolving`, or `connected` after ConnectKit is mounted. Configure `NEXT_PUBLIC_PROJECT_ID`, `NEXT_PUBLIC_CLIENT_KEY`, and `NEXT_PUBLIC_APP_ID` in `Frontend/.env.local` to enable wallet connection on first load.
