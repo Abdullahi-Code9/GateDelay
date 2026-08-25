@@ -32,6 +32,7 @@ describe("POST /api/multisig/execute", () => {
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.data.status).toBe("Executed");
+    expect(body.data.txHash).toBeUndefined();
     expect(body.event).toEqual({
       name: "TransactionExecuted",
       args: { txId, executor: "0xOwner1..." },

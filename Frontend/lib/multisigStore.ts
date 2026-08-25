@@ -185,7 +185,10 @@ export async function processTransaction(
 
   tx.status = "Executed";
   tx.executedAt = new Date().toISOString();
-  tx.txHash = "0x" + Math.random().toString(16).slice(2, 66);
+  // Do not invent a chain transaction hash. This store is an in-memory mock of
+  // MultiSigWallet; the UI should rely on `events` (TransactionExecuted) until a
+  // real broadcast path supplies txHash.
+  delete tx.txHash;
   tx.events.push({
     name: "TransactionExecuted",
     args: { txId, executor: resolvedExecutor },

@@ -505,15 +505,6 @@ export default function MultisigUI({
 
               {txStatus.status === "Executed" && (
                 <div className="space-y-2">
-                  {txStatus.txHash ? (
-                    <div
-                      className="flex items-center gap-2 text-xs p-2 rounded-lg"
-                      style={{ background: "rgba(34, 197, 94, 0.08)", color: "#22c55e" }}
-                    >
-                      <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                      <span className="font-mono truncate">Executed: {txStatus.txHash}</span>
-                    </div>
-                  ) : null}
                   {(txStatus.events ?? [])
                     .filter((event) => event.name === "TransactionExecuted")
                     .map((event, index) => (
@@ -530,6 +521,16 @@ export default function MultisigUI({
                         {event.name}(txId={event.args.txId}, executor={event.args.executor})
                       </div>
                     ))}
+                  {txStatus.txHash ? (
+                    <div
+                      className="flex items-center gap-2 text-xs p-2 rounded-lg"
+                      style={{ background: "rgba(34, 197, 94, 0.08)", color: "#22c55e" }}
+                      data-testid="multisig-tx-hash"
+                    >
+                      <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                      <span className="font-mono truncate">On-chain: {txStatus.txHash}</span>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </>

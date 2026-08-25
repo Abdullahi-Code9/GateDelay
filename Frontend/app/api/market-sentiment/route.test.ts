@@ -2,17 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "./route";
 
 describe("GET /api/market-sentiment", () => {
-  const originalEnv = process.env;
-
   beforeEach(() => {
-    process.env = { ...originalEnv };
-    process.env.NODE_ENV = "development";
-    process.env.NEXT_PUBLIC_API_URL = "https://backend.test/api";
+    vi.unstubAllEnvs();
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "https://backend.test/api");
     vi.restoreAllMocks();
   });
 
   afterEach(() => {
-    process.env = originalEnv;
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
 
   it("returns 400 when marketId is missing", async () => {
@@ -65,8 +64,8 @@ describe("GET /api/market-sentiment", () => {
   });
 
   it("refuses to guess localhost in production when API URL is unset", async () => {
-    delete process.env.NEXT_PUBLIC_API_URL;
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "");
+    vi.stubEnv("NODE_ENV", "production");
 
     const res = await GET(
       new Request("http://localhost/api/market-sentiment?marketId=m1"),

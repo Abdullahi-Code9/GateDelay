@@ -1,17 +1,15 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "./route";
 
 describe("POST /api/ipfs/upload-json", () => {
-  const originalEnv = process.env;
-
   beforeEach(() => {
-    process.env = { ...originalEnv };
-    process.env.NODE_ENV = "development";
-    delete process.env.NEXT_PUBLIC_IPFS_GATEWAY;
+    vi.unstubAllEnvs();
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_IPFS_GATEWAY", "");
   });
 
   afterEach(() => {
-    process.env = originalEnv;
+    vi.unstubAllEnvs();
   });
 
   it("uploads JSON and returns a public gateway URL (happy path)", async () => {
@@ -64,8 +62,8 @@ describe("POST /api/ipfs/upload-json", () => {
   });
 
   it("refuses a localhost gateway in the production path", async () => {
-    process.env.NODE_ENV = "production";
-    process.env.NEXT_PUBLIC_IPFS_GATEWAY = "http://localhost:8080/ipfs/";
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_IPFS_GATEWAY", "http://localhost:8080/ipfs/");
 
     const res = await POST(
       new Request("http://localhost/api/ipfs/upload-json", {

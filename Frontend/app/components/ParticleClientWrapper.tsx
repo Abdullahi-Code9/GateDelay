@@ -1,30 +1,21 @@
-"use client";
-
-import dynamic from "next/dynamic";
-import { isParticleConnectKitConfigured } from "../../lib/walletDetection";
-import { ConnectKitBridgePassthrough } from "./ConnectKitBridgeContext";
-import { WagmiShell } from "./WagmiShell";
-
-const ParticleProviderInner = dynamic(
-  () => import("./ParticleProvider").then((m) => m.ParticleProvider),
-  { ssr: false, loading: () => null },
-);
+import { UnconfiguredWalletRoot } from "./UnconfiguredWalletRoot";
 
 /**
- * Wallet provider gate for the app shell.
+ * Default layout wallet shell.
  *
- * - No Particle credentials: mount a minimal `WagmiShell` + no-op ConnectKit
- *   bridge so layout/nav/home widgets that call wagmi hooks do not crash.
- * - With credentials: mount Particle ConnectKit (which supplies Wagmi + bridge).
+ * Always mounts Wagmi + a no-op ConnectKit bridge so first load never imports
+ * `@particle-network/connectkit` (AWS → `node:fs`) into the Turbopack client
+ * graph. Upstream `main` dynamically imports Particle on every boot and fails
+ * the same Turbopack compile when those transitive Node built-ins appear.
+ *
+ * To enable Particle ConnectKit when credentials are present, point
+ * `app/layout.tsx` at `./components/ParticleClientWrapper.particle` and prefer
+ * `npm run dev:webpack` over global `node:*` stubs.
  */
-export function ParticleClientWrapper({ children }: { children: React.ReactNode }) {
-  if (!isParticleConnectKitConfigured()) {
-    return (
-      <WagmiShell>
-        <ConnectKitBridgePassthrough>{children}</ConnectKitBridgePassthrough>
-      </WagmiShell>
-    );
-  }
-
-  return <ParticleProviderInner>{children}</ParticleProviderInner>;
+export function ParticleClientWrapper({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <UnconfiguredWalletRoot>{children}</UnconfiguredWalletRoot>;
 }

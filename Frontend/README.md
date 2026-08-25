@@ -14,12 +14,13 @@ pnpm dev
 bun dev
 ```
 
-`npm run dev` uses the Webpack bundler (`next dev --webpack`). Particle
-ConnectKit pulls AWS credential providers that reference Node built-ins; Webpack
-rewrites `node:*` imports so the app shell boots. Use `npm run dev:turbo` only
-if you need Turbopack and have Particle credentials configured.
-
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+If Particle ConnectKit credentials are unset, the default layout wallet shell
+mounts Wagmi + a no-op ConnectKit bridge and never imports Particle into the
+client graph (avoids Turbopack failing on AWS SDK → `node:fs`). To opt into
+ConnectKit, point `app/layout.tsx` at `ParticleClientWrapper.particle` and use
+`npm run dev:webpack` rather than global Node built-in stubs.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
@@ -120,13 +121,12 @@ Provider order, outermost first:
 | `Navbar` | `components/layout/Navigation.tsx`, re-exported by `app/components/Navbar.tsx` |
 
 `QueryProvider` sits **outside** `ParticleClientWrapper` on purpose.
-`ParticleClientWrapper` returns a minimal `WagmiShell` + no-op ConnectKit bridge
-when wallet env vars are absent (`isParticleConnectKitConfigured()`), which is
-the normal state for a fresh checkout — a query client nested inside a missing
-ConnectKit tree would vanish, and every `useQuery` page would throw
-"No QueryClient set" on first load. Layout widgets that call wagmi
-(`PendingTransactions`, home quick-trade) keep working because `WagmiShell`
-always provides a provider when Particle is off.
+The default wrapper mounts `UnconfiguredWalletRoot` (`WagmiShell` + no-op
+ConnectKit bridge) so a query client nested inside a missing ConnectKit tree
+would not vanish, and every `useQuery` page would not throw "No QueryClient set"
+on first load. Layout widgets that call wagmi (`PendingTransactions`, home
+quick-trade) keep working because `WagmiShell` always provides a provider when
+Particle is off.
 
 Adding a route to the navbar means adding it to `NAV_LINKS` in
 `components/layout/Navigation.tsx`; the desktop row and the mobile drawer both
@@ -218,8 +218,9 @@ production path. Consumed by `AuditLogViewer` on `/audit`.
 - `TransactionExecuted(txId, executor)`
 
 The response includes `data.events` and a top-level `event` projection for the
-execute step so the UI never invents field names. Happy-path Vitest:
-`app/api/multisig/execute/route.test.ts`.
+execute step so the UI never invents field names. The in-memory mock does **not**
+fabricate an on-chain `txHash`; that field is omitted until a real broadcast path
+sets it. Happy-path Vitest: `app/api/multisig/execute/route.test.ts`.
 
 ### `/api/ipfs/upload-json` (#748)
 
