@@ -6,7 +6,7 @@ High-level sequencing for collaborators. Each phase file contains **â‰¥200**
 
 | Area | Status |
 |------|--------|
-| **Trading model** | **Ambiguous** â€” LMSR (`Contracts/src/MarketMaker.sol`, `Contracts/src/Trading.sol`) and CLOB (`Contracts/contracts/OrderBook.sol`) both exist; see [ADR 0001](docs/adr/0001-lmsr-vs-clob-ambiguity.md). **Phase 2 decides.** |
+| **Trading model** | **Ambiguous** â€” LMSR (`Contracts/src/MarketMaker.sol`, `Contracts/src/Trading.sol`) and CLOB (`Contracts/src/OrderBook.sol`) both exist; see [ADR 0001](docs/adr/0001-lmsr-vs-clob-ambiguity.md). **Phase 2 decides.** |
 | Backends | NestJS modules under `Backend/src/` plus legacy Express `Backend/server.js` â€” single runtime path unified in **Phase 1** |
 | Frontend | Next.js app under `Frontend/`; some market/trade UI still mock-driven â€” **Phase 3** completes surfaces |
 | Contracts | Foundry project under `Contracts/` â€” wired end-to-end in **Phase 2**, hardened in **Phase 4** |
@@ -21,17 +21,120 @@ High-level sequencing for collaborators. Each phase file contains **â‰¥200**
 | 4 | [PHASE_4.md](PHASE_4.md) | Hardening | â‰¥200 |
 | 5 | [PHASE_5.md](PHASE_5.md) | Deployment & shipping | â‰¥200 |
 
+## Architecture diagram
+
+The diagram below reflects the actual runtime components in `Backend/`, `Frontend/`, and `Contracts/`.
+
+```mermaid
+graph TB
+    subgraph Frontend["Frontend — Next.js 16 (port 3000)"]
+        UI["App Router\n27+ routes"]
+        Wallet["Particle Network\nConnectKit"]
+        TradeUI["Trade / Markets\npages"]
+        Prices["Socket.IO client\n/prices"]
+    end
+
+    subgraph Backend["Backend — NestJS (port 4000)"]
+        API["REST API\n/api prefix"]
+        TradeEngine["trade-engine\nmodule"]
+        Markets["markets\nmodule"]
+        WalletSvc["wallet\nmodule"]
+        Blockchain["blockchain\nmodule"]
+        WS["websocket\nprice.gateway"]
+        Bridge["bridge\nmodule"]
+        Liquidity["liquidity\nmodule"]
+        NFT["nft\nmodule"]
+        AI["ai\nmodule"]
+        RateLimit["rate-limiter\nmodule"]
+    end
+
+    subgraph Infra["Infrastructure"]
+        MongoDB[("MongoDB\n27017")]
+        Redis[("Redis\n6379")]
+        Heartbeat["heartbeat server\nport 4001"]
+    end
+
+    subgraph Contracts["Contracts — Foundry (112 Solidity files)"]
+        MarketMaker["MarketMaker.sol\nLMSR engine"]
+        Trading["Trading.sol\nfee wrapper"]
+        MarketRelay["MarketRelay.sol\nChainlink CCIP"]
+        MarketFactory["MarketFactory.sol"]
+        Resolution["Resolution.sol"]
+        PositionToken["PositionToken.sol\nERC1155"]
+        LiquidityPool["LiquidityPool.sol"]
+        LMSR["LMSR.sol\nmath library"]
+    end
+
+    subgraph Chain["Blockchain — Mantle L2"]
+        RPC["RPC endpoint\nport 8545 / 5000"]
+    end
+
+    UI -->|REST calls| API
+    UI -->|JWT auth| WalletSvc
+    TradeUI -->|orders| TradeEngine
+    Prices -->|Socket.IO| WS
+
+    API --> TradeEngine
+    API --> Markets
+    API --> WalletSvc
+    API --> Bridge
+    API --> Liquidity
+    API --> NFT
+    API --> AI
+
+    TradeEngine --> MongoDB
+    Markets --> MongoDB
+    WalletSvc --> MongoDB
+    Liquidity --> MongoDB
+
+    TradeEngine --> Redis
+    RateLimit --> Redis
+    WS --> Redis
+    Bridge --> Redis
+
+    Blockchain --> RPC
+    WalletSvc --> Blockchain
+    TradeEngine --> Blockchain
+
+    Blockchain --> MarketFactory
+    Blockchain --> MarketMaker
+    Blockchain --> Trading
+    Blockchain --> Resolution
+
+    TradeEngine -.->|settlement calls| MarketMaker
+    Markets -.->|resolution| Resolution
+    Bridge -.->|cross-chain| MarketRelay
+
+    Heartbeat --> Redis
+```
+
+### Component summary
+
+| Layer | Technology | Key paths |
+|-------|-----------|-----------|
+| **Frontend** | Next.js 16, React 19, Particle Network, Socket.IO | `Frontend/app/`, `Frontend/components/` |
+| **Backend** | NestJS 11, Mongoose, Redis, ethers 6 | `Backend/src/` (47 NestJS modules) |
+| **Contracts** | Solidity 0.8.28, Foundry, OpenZeppelin | `Contracts/src/` (112 contracts), `Contracts/test/` (90 tests) |
+| **Infrastructure** | MongoDB, Redis | Default ports 27017, 6379 |
+
+### Important data flows
+
+1. **Wallet flow**: Frontend → Particle ConnectKit → Backend `wallet` module (EIP-1919 verification) → JWT issued → subsequent API calls authenticated.
+2. **Trade flow**: Frontend trade page → Backend `trade-engine` module (price-time priority matching, MongoDB transactions) → real-time prices via Socket.IO `/prices` namespace → on-chain settlement via `blockchain` module → `MarketMaker.sol` / `Trading.sol`.
+3. **Cross-chain flow**: Backend `bridge` module → `MarketRelay.sol` (Chainlink CCIP) → destination chain.
+4. **Resolution flow**: Backend `markets` module (cron) → `Resolution.sol` → payout via `LiquidityPool.sol`.
+
 ## Phase dependencies
 
 ```text
 Phase 1 (foundations)
-    â†“
+    ↓
 Phase 2 (core market wiring)
-    â†“
+    ↓
 Phase 3 (product complete)
-    â†“
+    ↓
 Phase 4 (hardening)
-    â†“
+    ↓
 Phase 5 (deployment & shipping)
 ```
 
