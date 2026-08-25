@@ -149,16 +149,19 @@ export function WebSocketProvider({
                 setHasShownConnectionError(false);
             }
         } else if (websocket.status === "error" && !hasShownConnectionError) {
+            const detail =
+                websocket.error?.message ||
+                `Unable to reach ${backendUrl} (namespace /prices). Check NEXT_PUBLIC_BACKEND_URL and Backend PORT.`;
             if (enablePollingFallback) {
                 toast.warning(
-                    "Connection Issue",
-                    "Using fallback mode. Some features may be delayed.",
-                    { duration: 7000 }
+                    "WebSocket connection failed",
+                    `${detail} Falling back to REST polling; live prices may be delayed.`,
+                    { duration: 10000 }
                 );
             } else {
                 toast.error(
-                    "Connection Lost",
-                    "Unable to connect to real-time updates. Please refresh the page.",
+                    "WebSocket connection failed",
+                    detail,
                     { duration: 0 }
                 );
             }
