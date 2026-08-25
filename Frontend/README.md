@@ -35,6 +35,23 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
+## Docker
+
+```bash
+npm run docker:build     # docker build -t gatedelay-frontend:local .
+npm run docker:smoke     # boots the image, checks /api/ping, / and /audit
+```
+
+Multi-stage build on `node:22-alpine` using Next.js `output: "standalone"`, run
+as a non-root user with a `/api/ping` healthcheck.
+
+`NEXT_PUBLIC_*` values are **build args, not runtime env** — Next.js inlines them
+into the client bundle, so an image is environment-specific and no secret may be
+passed in. Required keys: `.env.example` (the only tracked `.env*` here). Full
+build, retry, rollback and deploy-sequencing notes, including how a release
+orders itself against `backend/services/upgradeCoordinator.js`:
+[`docs/DEPLOY_FRONTEND_DOCKER.md`](../docs/DEPLOY_FRONTEND_DOCKER.md).
+
 ## App shell
 
 `app/layout.tsx` is the only place chrome is defined. Every route renders inside

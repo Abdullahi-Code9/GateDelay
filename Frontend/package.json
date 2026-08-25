@@ -12,7 +12,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "docker:build": "docker build -t gatedelay-frontend:local .",
+    "docker:smoke": "bash scripts/smoke-test.sh gatedelay-frontend:local"
   },
   "dependencies": {
     "@particle-network/connectkit": "^3.0.0-alpha.4",
