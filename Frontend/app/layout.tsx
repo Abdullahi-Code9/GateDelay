@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { ParticleClientWrapper } from "./components/ParticleClientWrapper";
+import { QueryProvider } from "./components/QueryProvider";
 import Navbar from "./components/Navbar";
 import { ToastProvider } from "./components/ToastProvider";
 import { WebSocketProvider } from "./components/WebSocketProvider";
@@ -47,6 +48,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   </ConnectivityProvider>
                 </WebSocketProvider>
               </ParticleClientWrapper>
+              <QueryProvider>
+                <ParticleClientWrapper>
+                  <WebSocketProvider>
+                    <ConnectivityProvider>
+                      <OfflineDetection />
+                      <Navbar />
+                      <BackupReminder />
+                      <div className="flex-1">{children}</div>
+                      <PendingTransactions />
+                    </ConnectivityProvider>
+                  </WebSocketProvider>
+                </ParticleClientWrapper>
+              </QueryProvider>
             </ToastProvider>
           </ThemeProvider>
         </PageErrorBoundary>
