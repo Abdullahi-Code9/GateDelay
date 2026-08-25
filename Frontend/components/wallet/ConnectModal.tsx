@@ -184,7 +184,7 @@ export default function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
               </button>
             </div>
 
-            {!showEmptyState ? (
+            {showEmptyState ? (
               <div
                 className="rounded-xl px-4 py-6 text-center"
                 style={{

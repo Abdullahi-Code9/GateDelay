@@ -25,6 +25,7 @@
     "test:alerts": "node -e \"require('./routes/alerts')\"",
     "test:api-example": "node -e \"require('./routes/api.example')\"",
     "test:balance": "node ./scripts/balance-smoke.js"
+    "test:api-example": "node -e \"require('./routes/api.example')\""
   },
   "dependencies": {
     "@keyv/redis": "^5.1.6",

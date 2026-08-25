@@ -8,6 +8,7 @@ Outcome is a decentralized flight prediction market built on the Stellar network
 - **AI Risk Assessment**: Integrated Llama 3.1 analysis via **Groq** for real-time trading signals and flight risk reports.
 - **Real-time Aviation Data**: Automated flight tracking and market initialization powered by the **AviationStack API**.
 - **Hybrid AMM**: Sophisticated Logarithmic Market Scoring Rule (LMSR) for liquidity pricing, paired with a fair cost-based payout mechanism.
+- **Cross-Chain Relay**: Chainlink CCIP-powered relay for cross-chain market operations — see [Market Relay Delivery Summary](MARKET_RELAY_DELIVERY_SUMMARY.md).
 - **Stellar Network**: High-performance, low-fee prediction market trading powered by the Stellar blockchain.
 - **Connect with Ease**: Seamless wallet integration via **Particle Network**, supporting both social and traditional EOA logins.
 
@@ -81,6 +82,16 @@ npm run dev
 - `Contracts/`: Solidity contracts, Foundry tests, and deployment scripts.
 - `Backend/`: NestJS API (and legacy Express `server.js`).
 - `Frontend/`: Next.js application, AI routes, and Web3 components.
+
+## Further reading
+
+| Document | Description |
+|----------|-------------|
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Full contributor setup guide |
+| [PHASES.md](PHASES.md) | Phase roadmap and issue index |
+| [CHECKLIST.md](CHECKLIST.md) | Local wallet + trade flow runbook |
+| [MARKET_RELAY_DELIVERY_SUMMARY.md](MARKET_RELAY_DELIVERY_SUMMARY.md) | Cross-chain relay system (Chainlink CCIP) |
+| [MINTING_PAUSABLE_IMPLEMENTATION.md](MINTING_PAUSABLE_IMPLEMENTATION.md) | Pausable minting token with role-based control |
 
 ## ðŸ“œ License
 
