@@ -5,6 +5,18 @@
 
 Parent index: [PHASES.md](PHASES.md)
 
+## Ownership and related docs
+
+| | |
+|---|---|
+| **Phase owner** | Phase 2 (GitHub label `phase-2`) — core market wiring |
+| **Roadmap** | [PHASES.md](PHASES.md) |
+| **Trading model** | [ADR 0001: LMSR vs CLOB](docs/adr/0001-lmsr-vs-clob-ambiguity.md) — proposed; **this phase decides** |
+| **Foundations** | [PHASE_1.md](PHASE_1.md) |
+| **Local env / ports** | [`Backend/.env.example`](Backend/.env.example) (`PORT=4000`, `FRONTEND_URL=http://localhost:3000`, `HEARTBEAT_PORT=4001`, `RPC_URL=http://127.0.0.1:8545`) |
+
+Until ADR 0001 is closed, treat `MarketMaker` + `Trading` + `LMSR` (`Contracts/src/`) as the canonical prediction-market path. `Contracts/src/OrderBook.sol` is isolated CLOB code, not the live market lifecycle.
+
 ---
 
 ## Issues (210 tracked)
