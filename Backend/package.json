@@ -23,6 +23,12 @@
     "test:approvals": "node -e \"require('./routes/approvals'); console.log('APPROVALS_SMOKE_PASS')\"",
     "test:beta": "node -e \"require('./routes/beta'); console.log('BETA_SMOKE_PASS')\"",
     "test:blacklist": "node -e \"require('./routes/blacklist'); console.log('BLACKLIST_SMOKE_PASS')\"",
+    "test:alerts": "node -e \"require('./routes/alerts')\"",
+    "test:aml": "node -e \"require('./routes/aml')\"",
+    "test:api-example": "node -e \"require('./routes/api.example')\"",
+    "test:migration": "node -e \"const migration = require('../backend/migrations/001_init_markets'); if (typeof migration.up !== 'function' || typeof migration.down !== 'function') process.exit(1); console.log('MIGRATION_SMOKE_PASS')\"",
+    "express:start": "node ../backend/server.js",
+    "express:dev": "node --watch ../backend/server.js"
     "test:disputes": "node -e \"require('./routes/disputes'); console.log('DISPUTES_SMOKE_PASS')\"",
     "test:trade-validation": "node -e \"require('./middleware/tradeValidation'); console.log('TRADE_VALIDATION_SMOKE_PASS')\"",
     "test:alerts": "node -e \"require('./routes/alerts')\"",

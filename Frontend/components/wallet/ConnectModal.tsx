@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useConnectKitBridge } from "../../app/components/ConnectKitBridge";
+import { useConnectKitBridge } from "../../app/components/ConnectKitBridgeContext";
 import {
   hasInjectedWalletProvider,
   isMetaMaskInstalled,

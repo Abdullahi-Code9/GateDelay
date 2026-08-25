@@ -1,5 +1,6 @@
 /**
- * Resolves the backend API base URL for server-side route handlers.
+ * Resolves backend origin URLs for server-side route handlers and the
+ * WebSocket provider.
  *
  * Route handlers across `app/api/*` each inlined
  * `process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api"`. That default
@@ -13,7 +14,8 @@
  */
 
 /** Local default. Matches `PORT=4000` in `Backend/.env.example`. */
-const DEVELOPMENT_FALLBACK = "http://localhost:4000/api";
+const DEVELOPMENT_API_FALLBACK = "http://localhost:4000/api";
+const DEVELOPMENT_BACKEND_FALLBACK = "http://localhost:4000";
 
 export class MissingApiBaseError extends Error {
   constructor() {
@@ -23,6 +25,17 @@ export class MissingApiBaseError extends Error {
         "localhost. See Frontend/.env.example.",
     );
     this.name = "MissingApiBaseError";
+  }
+}
+
+export class MissingBackendUrlError extends Error {
+  constructor() {
+    super(
+      "NEXT_PUBLIC_BACKEND_URL is not set. It is required in production builds — " +
+        "there is no safe default for the WebSocket / socket.io origin. " +
+        "See Frontend/.env.example.",
+    );
+    this.name = "MissingBackendUrlError";
   }
 }
 
@@ -41,5 +54,26 @@ export function resolveApiBase(): string {
     throw new MissingApiBaseError();
   }
 
-  return DEVELOPMENT_FALLBACK;
+  return DEVELOPMENT_API_FALLBACK;
+}
+
+/**
+ * Backend origin used by socket.io (`WebSocketProvider`) and other direct
+ * browser→backend calls. Distinct from `resolveApiBase()` which includes the
+ * `/api` prefix.
+ *
+ * @throws {MissingBackendUrlError} in production when the variable is unset.
+ */
+export function resolveBackendUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_BACKEND_URL?.trim();
+
+  if (configured) {
+    return configured.replace(/\/+$/, "");
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new MissingBackendUrlError();
+  }
+
+  return DEVELOPMENT_BACKEND_FALLBACK;
 }
