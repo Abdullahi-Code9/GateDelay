@@ -12,7 +12,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "docker:build": "docker build -t gatedelay-frontend:local .",
+    "docker:smoke": "bash scripts/smoke-test.sh gatedelay-frontend:local"
   },
   "dependencies": {
     "@particle-network/connectkit": "^3.0.0-alpha.4",
@@ -42,8 +44,10 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
+    "@testing-library/user-event": "^14.6.6",
     "@types/lodash": "^4.14.202",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.5",
