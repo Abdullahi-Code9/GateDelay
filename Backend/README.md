@@ -24,6 +24,30 @@ npm install
 
 ```bash
 npm run dev
+```
+
+## Market data and balances
+
+The Nest market-data module uses AviationStack for flight queries and caches responses for five minutes. Set `AVIATION_STACK_API_KEY` in `.env`; requests are exposed at `/api/market-data/flights` and `/api/market-data/airlines`.
+
+Balances are persisted by `models/Balance.js` and are shared by the Nest API and legacy Express routes:
+
+- Nest: `GET /api/balances/:userId` and `GET /api/balances/:userId/:asset`
+- Legacy: `GET /user/balance`, `/v1/users/balance`, and `/v2/users/balance` with the `userId` query parameter
+
+Run the dependency-free module wiring smoke check from this directory:
+
+```bash
+npm run test:balance
+```
+
+The Nest scripts are also run from `Backend`:
+
+```bash
+npm run start:dev
+npm run build
+npm test
+```
 ## GateDelay Backend Setup
 
 **For complete setup instructions, prerequisites, and troubleshooting, see [SETUP.md](./SETUP.md)**
