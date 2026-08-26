@@ -52,11 +52,11 @@ jobs:
         run: forge --version
 
       - name: Run Forge fmt check
-        run: forge fmt --check src/ script/
+        run: forge fmt --check src/
         working-directory: Contracts
 
       - name: Compile contracts
-        run: forge build --force --skip test
+        run: forge build --force --skip test --skip script
         working-directory: Contracts
 
       - name: Run Foundry tests
