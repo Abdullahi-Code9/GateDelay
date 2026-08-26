@@ -25,8 +25,7 @@
     "test:blacklist": "node -e \"require('./routes/blacklist'); console.log('BLACKLIST_SMOKE_PASS')\"",
     "test:alerts": "node -e \"require('./routes/alerts')\"",
     "test:api-example": "node -e \"require('./routes/api.example')\"",
-    "test:balance": "node ./scripts/balance-smoke.js"
-    "test:api-example": "node -e \"require('./routes/api.example')\""
+    "test:balance": "node ./scripts/balance-smoke.js",
     "test:migration": "node -e \"const migration = require('../backend/migrations/001_init_markets'); if (typeof migration.up !== 'function' || typeof migration.down !== 'function') process.exit(1); console.log('MIGRATION_SMOKE_PASS')\"",
     "express:start": "node ../backend/server.js",
     "express:dev": "node --watch ../backend/server.js",
