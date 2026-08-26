@@ -5,6 +5,163 @@
 
 Parent index: [PHASES.md](PHASES.md)
 
+## Local wallet + trade runbook
+
+This section answers: **how do I run the wallet + trade flow locally?**
+
+**Phase ownership:** The runbook is a Phase 2 documentation task (`phase-2`). It describes **Phase 1 surfaces** (app boot, NestJS API, Next.js shell, Particle wallet chrome) plus the **Phase 2 pieces you need for a local trade attempt** (Nest `trade-engine` HTTP API, LMSR `MarketMaker.buy` from the UI when a contract address is set). Live market wiring and the LMSR vs CLOB choice remain Phase 2 — see [PHASE_2.md](PHASE_2.md) and [PHASES.md](PHASES.md).
+
+Full install notes: [CONTRIBUTING.md](CONTRIBUTING.md). Env source of truth: [`Backend/.env.example`](Backend/.env.example). Frontend has no `.env.example`; use the template in CONTRIBUTING.md.
+
+### Prerequisites
+
+| Tool | Used for |
+|------|----------|
+| [Node.js](https://nodejs.org/) 20+ (`Frontend/package.json` engines) | Backend and Frontend |
+| [Foundry](https://getfoundry.sh/) (`forge`, `anvil`) | `Contracts/` build/test and optional local RPC |
+| [Git](https://git-scm.com/) | clone |
+| MongoDB | Backend persistence (`MONGODB_URI`) |
+| Redis | queues / throttling / cache (`REDIS_URL` / `REDIS_HOST` / `REDIS_PORT`) |
+
+There is no `docker-compose` in this repository. Start MongoDB and Redis yourself (local install or your own containers).
+
+### Ports (from the repo, not guesses)
+
+| Service | Port | Source |
+|---------|------|--------|
+| Frontend (Next.js) | **3000** | `next dev` default; `FRONTEND_URL` in [`Backend/.env.example`](Backend/.env.example) |
+| Backend (NestJS) | **4000** | `PORT=4000` in [`Backend/.env.example`](Backend/.env.example) |
+| Nest fallback | **3000** | `Backend/src/main.ts`: `process.env.PORT ?? 3000` if `.env` is missing |
+| Heartbeat | **4001** | `HEARTBEAT_PORT=4001` in `.env.example` |
+| MongoDB | **27017** | `MONGODB_URI=mongodb://127.0.0.1:27017/gatedelay` |
+| Redis | **6379** | `REDIS_URL` / `REDIS_PORT` |
+| Anvil / local RPC | **8545** | `RPC_URL=http://127.0.0.1:8545` |
+
+If Backend and Frontend both try **3000**, set Backend `PORT` (copy `.env.example`) or run `npm run dev -- -p 3001` in `Frontend/`.
+
+### Install
+
+From the repository root after `git clone`.
+
+```bash
+cd Backend
+npm install
+cp .env.example .env          # Windows: copy .env.example .env
+```
+
+Edit `Backend/.env` and replace placeholder secrets (`JWT_SECRET`, `JWT_REFRESH_SECRET`, `WEBHOOK_SECRET`, …). Keep `PORT=4000` unless you have a reason not to.
+
+```bash
+cd ../Frontend
+npm install
+```
+
+Create `Frontend/.env.local` (not committed):
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:4000/api
+NEXT_PUBLIC_BACKEND_URL=http://localhost:4000
+
+NEXT_PUBLIC_PROJECT_ID=
+NEXT_PUBLIC_CLIENT_KEY=
+NEXT_PUBLIC_APP_ID=
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
+
+NEXT_PUBLIC_MARKET_MAKER_ADDRESS=
+NEXT_PUBLIC_MARKET_FACTORY_ADDRESS=
+```
+
+Use `http://localhost:3000` for `NEXT_PUBLIC_*` Backend URLs only if Nest is running with `PORT` unset.
+
+Optional contracts (Phase 1 build check; not required to open the UI):
+
+```bash
+cd ../Contracts
+forge build
+forge test
+```
+
+### Startup order
+
+1. MongoDB on `27017` and Redis on `6379`.
+2. Optional: `anvil` from `Contracts/` if you need the `.env.example` RPC at `http://127.0.0.1:8545`.
+3. Backend: `cd Backend && npm run start:dev`
+4. Frontend: `cd Frontend && npm run dev`
+
+Verify Backend: `GET http://localhost:4000/api` — Nest global prefix is `api` (`Backend/src/main.ts`); `AppController` serves that route. Swagger: `http://localhost:4000/api/docs`.
+
+Verify Frontend: open `http://localhost:3000`. You should see the home page and the navbar (`Frontend/components/layout/Navigation.tsx`), not a blank screen.
+
+Canonical Nest entry is `npm run start:dev`. Legacy Express is `npm run express:start` (`Backend/server.js`) — do not mix the two for this runbook.
+
+### Wallet flow (Phase 1 UI)
+
+1. Fill Particle ConnectKit values in `Frontend/.env.local` (`NEXT_PUBLIC_PROJECT_ID`, `NEXT_PUBLIC_CLIENT_KEY`, `NEXT_PUBLIC_APP_ID`) and restart `npm run dev`.
+2. Click **Connect Wallet** in the navbar (`Frontend/app/components/WalletButton.tsx` → `Frontend/components/wallet/ConnectModal.tsx`).
+3. Complete Particle ConnectKit (injected wallet, social, or WalletConnect as configured).
+
+**Without Particle env vars** the shell still renders. Connect Wallet shows an empty-state message pointing at `Frontend/.env.local` / CONTRIBUTING.md. That is expected Phase 1 behavior, not a Phase 2 market bug.
+
+**Check:** the button becomes a truncated address + Disconnect after a successful connect.
+
+### Trade flow
+
+Two different “trade” paths exist. Do not treat them as one pipeline.
+
+**A. UI (mostly Phase 1 mock + optional LMSR call)**
+
+1. Home (`Frontend/app/page.tsx`): sample markets link to `/markets/{id}`; **Quick trade** is `Frontend/components/trade/QuickTradeWidget.tsx`.
+2. Market page: `/markets/1` (and other ids) — mock market data; `buy` on `NEXT_PUBLIC_MARKET_MAKER_ADDRESS` via wagmi when the wallet is connected.
+3. Dedicated trade page: `/trade/market-1` (also `market-2`, `market-3`) — mock `TradingInterface`.
+
+On-chain `MarketMaker.buy` only happens if ConnectKit/wagmi is mounted **and** `NEXT_PUBLIC_MARKET_MAKER_ADDRESS` is a real deployed address. Leaving it empty uses `0x000…0000` in the widget — transactions will not succeed. Deploying/wiring that contract is Phase 2 ([PHASE_2.md](PHASE_2.md)).
+
+**B. Backend trade-engine (Phase 2 Nest module, needed for the HTTP order API)**
+
+After register/login (MongoDB required):
+
+```bash
+curl -s -X POST http://localhost:4000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"dev@localhost\",\"password\":\"password1\",\"name\":\"Dev\"}"
+
+curl -s -X POST http://localhost:4000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"dev@localhost\",\"password\":\"password1\"}"
+```
+
+Place an order (`Backend/src/trade-engine/trade-engine.controller.ts`, JWT required). Login returns `{ accessToken, refreshToken, user }`. Auth users are **in-memory** (`Backend/src/auth/auth.service.ts`) — a Backend restart forgets them. **Orders** persist in MongoDB via `TradeEngineService`.
+
+```bash
+curl -s -X POST http://localhost:4000/api/trade-engine/orders \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ACCESS_TOKEN" \
+  -d "{\"pair\":\"YES-NO\",\"type\":\"Market\",\"side\":\"Buy\",\"amount\":\"1\"}"
+```
+
+`PlaceOrderDto` fields: `pair`, `type` (`Market` \| `Limit` \| `Stop-Loss`), `side` (`Buy` \| `Sell`), `amount`, optional `price` / `stopPrice`. List orders: `GET /api/trade-engine/orders`.
+
+This HTTP engine is **not** the same as clicking Quick Trade. Phase 1 gets both processes running; Phase 2 wires them to live markets.
+
+### What “success” looks like
+
+- [ ] `GET http://localhost:4000/api` returns the Nest hello body
+- [ ] `http://localhost:3000` shows navbar + home markets
+- [ ] Connect Wallet either opens options (Particle configured) or the documented empty state
+- [ ] `/markets/1` and `/trade/market-1` render (mock data is OK for Phase 1)
+- [ ] Optional: login + `POST /api/trade-engine/orders` returns **201** when MongoDB and JWT secrets are valid
+
+### Troubleshooting (only what this repo supports)
+
+| Symptom | Likely cause |
+|---------|----------------|
+| Backend exits on Redis/Mongo | Start those services or fix `MONGODB_URI` / `REDIS_*` |
+| `EADDRINUSE` on 3000 | Copy `.env.example` so Backend uses 4000, or move Frontend to 3001 |
+| Wallet modal empty | Missing Particle keys in `.env.local` |
+| Quick trade / market `buy` fails | No wallet provider, or `NEXT_PUBLIC_MARKET_MAKER_ADDRESS` still zero |
+| `POST /api/trade-engine/orders` 401 | Missing/invalid JWT; register/login first |
+| WebSocket `/test-websocket` never connects | Gateway requires JWT; see [Frontend/WEBSOCKET_QUICKSTART.md](Frontend/WEBSOCKET_QUICKSTART.md) |
+
 ---
 
 ## Issues (210 tracked)

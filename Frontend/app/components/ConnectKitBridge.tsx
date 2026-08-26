@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useAccount, useModal, useDisconnect } from "@particle-network/connectkit";
 
 export type ConnectKitBridgeValue = {
@@ -30,11 +30,16 @@ const defaultBridge: ConnectKitBridgeValue = {
 };
 
 const ConnectKitBridgeContext = createContext<ConnectKitBridgeValue>(defaultBridge);
+import { ConnectKitBridgeContext, type ConnectKitBridgeValue } from "./ConnectKitBridgeContext";
 
 /**
  * Must render inside ConnectKitProvider. Exposes connection actions to
  * components that must not call ConnectKit hooks directly (e.g. ConnectModal
  * when providers may be absent).
+ *
+ * Kept separate from `ConnectKitBridgeContext` so the app shell can import the
+ * context/hook without pulling `@particle-network/connectkit` (and its AWS SDK
+ * Node built-ins) into every page bundle.
  */
 export function ConnectKitBridge({ children }: { children: ReactNode }) {
   const { isConnected, address, isConnecting } = useAccount();
@@ -60,6 +65,4 @@ export function ConnectKitBridge({ children }: { children: ReactNode }) {
   );
 }
 
-export function useConnectKitBridge(): ConnectKitBridgeValue {
-  return useContext(ConnectKitBridgeContext);
-}
+export { useConnectKitBridge } from "./ConnectKitBridgeContext";

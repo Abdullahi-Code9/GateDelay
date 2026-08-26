@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useConnectKitBridge } from "../../app/components/ConnectKitBridge";
+import { useConnectKitBridge } from "../../app/components/ConnectKitBridgeContext";
 import {
   hasInjectedWalletProvider,
   isMetaMaskInstalled,
@@ -184,7 +184,7 @@ export default function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
               </button>
             </div>
 
-            {!showEmptyState ? (
+            {showEmptyState ? (
               <div
                 className="rounded-xl px-4 py-6 text-center"
                 style={{
