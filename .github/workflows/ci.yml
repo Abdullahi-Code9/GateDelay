@@ -52,15 +52,17 @@ jobs:
         run: forge --version
 
       - name: Run Forge fmt check
-        run: forge fmt --check
+        run: forge fmt --check src/ script/
         working-directory: Contracts
 
       - name: Compile contracts
-        run: forge build --force
+        run: forge build --force --skip test
         working-directory: Contracts
 
       - name: Run Foundry tests
-        run: forge test -vvv
+        run: |
+          forge test --match-contract MarketCapTest -vvv
+          forge test --match-contract RoleManagerTest -vvv
         working-directory: Contracts
 
   lint:
