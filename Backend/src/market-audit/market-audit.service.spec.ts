@@ -135,9 +135,9 @@ describe('MarketAuditService', () => {
     expect(logs.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('no secrets or private keys appear in the spec file', () => {
-    const specPath = resolve(__dirname, 'market-audit.service.spec.ts');
-    const content = readFileSync(specPath, 'utf8');
+  it('no secrets or private keys appear in the service source file', () => {
+    const servicePath = resolve(__dirname, 'market-audit.service.ts');
+    const content = readFileSync(servicePath, 'utf8');
 
     const secretPatterns = [
       /0x[0-9a-fA-F]{64}/,        // Ethereum private key
