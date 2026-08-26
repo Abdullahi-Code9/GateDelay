@@ -22,11 +22,13 @@ Redis-backed workers also require either `REDIS_URL` or `REDIS_HOST`/`REDIS_PORT
 npm install
 ```
 
-## Run
+## Run the Nest API
 
 ```bash
-npm run dev
+npm run start:dev
 ```
+
+Run the legacy Express API from the repository root with `npm --prefix backend run start`.
 
 ## Market data and balances
 
