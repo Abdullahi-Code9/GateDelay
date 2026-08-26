@@ -6,6 +6,7 @@ High-level sequencing for collaborators. Each phase file contains **â‰¥200**
 
 | Area | Status |
 |------|--------|
+| **Trading model** | **Ambiguous** â€” LMSR (`Contracts/src/MarketMaker.sol`, `Contracts/src/Trading.sol`) and CLOB (`Contracts/src/OrderBook.sol`) both exist; see [ADR 0001](docs/adr/0001-lmsr-vs-clob-ambiguity.md). **[Phase 2](PHASE_2.md) decides.** |
 | **Trading model** | **Ambiguous** â€” LMSR (`Contracts/src/MarketMaker.sol`, `Contracts/src/Trading.sol`) and CLOB (`Contracts/src/OrderBook.sol`) both exist; see [ADR 0001](docs/adr/0001-lmsr-vs-clob-ambiguity.md). **Phase 2 decides.** |
 | Backends | NestJS modules under `Backend/src/` plus legacy Express `Backend/server.js` â€” single runtime path unified in **Phase 1** |
 | Frontend | Next.js app under `Frontend/`; some market/trade UI still mock-driven â€” **Phase 3** completes surfaces |
@@ -191,7 +192,7 @@ Apply these GitHub labels when filing issues from phase files:
 
 | ADR | Title | Status |
 |-----|-------|--------|
-| [0001](docs/adr/0001-lmsr-vs-clob-ambiguity.md) | LMSR vs CLOB / OrderBook ambiguity | Proposed â€” decision deferred to Phase 2 |
+| [0001](docs/adr/0001-lmsr-vs-clob-ambiguity.md) | LMSR vs CLOB / OrderBook ambiguity | Proposed — decision owned by [PHASE_2.md](PHASE_2.md) |
 
 ## Regenerating phase files
 

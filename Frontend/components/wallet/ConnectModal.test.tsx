@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import ConnectModal from "./ConnectModal";
+import { isParticleConnectKitConfigured } from "../../lib/walletDetection";
 
 vi.mock("framer-motion", () => ({
   motion: {
@@ -12,13 +13,24 @@ vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: React.PropsWithChildren) => <>{children}</>,
 }));
 
+vi.mock("../../lib/walletDetection", async () => {
+  const actual = await vi.importActual<typeof import("../../lib/walletDetection")>(
+    "../../lib/walletDetection",
+  );
+  return {
+    ...actual,
+    isParticleConnectKitConfigured: vi.fn(() => false),
+  };
+});
+
 describe("ConnectModal", () => {
   beforeEach(() => {
     delete (window as Window & { ethereum?: unknown }).ethereum;
-    vi.unstubAllEnvs();
+    vi.mocked(isParticleConnectKitConfigured).mockReturnValue(false);
   });
 
   afterEach(() => {
+    cleanup();
     vi.restoreAllMocks();
   });
 
@@ -36,9 +48,7 @@ describe("ConnectModal", () => {
   });
 
   it("shows wallet options when Particle ConnectKit env is configured", () => {
-    vi.stubEnv("NEXT_PUBLIC_PROJECT_ID", "test-project");
-    vi.stubEnv("NEXT_PUBLIC_CLIENT_KEY", "test-client");
-    vi.stubEnv("NEXT_PUBLIC_APP_ID", "test-app");
+    vi.mocked(isParticleConnectKitConfigured).mockReturnValue(true);
 
     render(<ConnectModal isOpen onClose={() => {}} />);
     expect(screen.queryByTestId("wallet-empty-state")).not.toBeInTheDocument();

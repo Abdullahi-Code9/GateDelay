@@ -1,6 +1,8 @@
 # Backend
 
-The backend mixes a lightweight Express API (`server.js`), background services, and a newer Nest-based `src/` app. Start by copying `.env.example` to `.env` and filling in the placeholders for the services you plan to run.
+The backend mixes a lightweight Express layer (`routes/`, `services/`, `models/`, all CommonJS), background services, and a newer Nest-based `src/` app.
+
+> **Note on entrypoints.** There is no `Backend/server.js`; the Express *server* lives in the sibling lowercase `backend/` package. What sits under `Backend/` is the Express route and model layer, which the Nest app and the smoke scripts load directly. `npm run start:dev` (`nest start --watch`) is the canonical dev server for this package. `DUAL_ENTRYPOINTS.md` predates that split and still describes a `Backend/server.js` boot path that no longer exists. Start by copying `.env.example` to `.env` and filling in the placeholders for the services you plan to run.
 
 ## Required environment variables
 
@@ -48,6 +50,32 @@ npm run start:dev
 npm run build
 npm test
 ```
+Use `npm run start:dev` for the NestJS development API. The migration REST API is owned by the Express entrypoint:
+
+```bash
+npm run express:dev
+```
+
+## Market migration API
+
+The market migration is discovered from `backend/migrations/001_init_markets.js` and exposed under `/api/migrations` by Express:
+
+- `GET /api/migrations/status` - show pending and applied migrations
+- `POST /api/migrations/execute` with `{ "name": "001_init_markets" }` - create the markets table
+- `POST /api/migrations/validate/001_init_markets` - verify migration integrity
+
+Run its smoke check with:
+
+```bash
+npm run test:migration
+```
+
+Migration environment variables:
+
+- `PORT` - Express port, default `4000`
+- `MONGODB_URI` - optional MongoDB URI; SQLite-only migrations continue if MongoDB is unavailable
+- `MIGRATIONS_DB_PATH` - optional SQLite file path, default `backend/data/migrations.sqlite`
+
 ## GateDelay Backend Setup
 
 **For complete setup instructions, prerequisites, and troubleshooting, see [SETUP.md](./SETUP.md)**
@@ -159,6 +187,82 @@ npm run test:blacklist
 ```
 
 See `Backend/routes/blacklist.js` and `Backend/services/blacklistService.js` for full inline documentation.
+
+## Disputes
+
+Dispute lifecycle handling: `Backend/models/Dispute.js` (Mongoose schema),
+`Backend/services/disputeService.js`, `Backend/routes/disputes.js`.
+
+**Environment variables**
+
+- `MONGODB_URI` — required. The model itself loads without a connection (the
+  schema is declared eagerly), but every read/write through `disputeService`
+  needs it.
+
+No other variables are specific to this module.
+
+**Status machine**
+
+`DISPUTE_STATUSES` and `VALID_TRANSITIONS` are exported from the model and are
+the single source of truth:
+
+```
+OPEN ──► UNDER_REVIEW ──► RESOLVED   (terminal)
+  │            └────────► REJECTED   (terminal)
+  └─────────────────────► REJECTED
+```
+
+`OPEN → RESOLVED` is deliberately not allowed: resolution must pass through
+review, which is where `reviewStartedAt` is recorded.
+
+**Scripts**
+
+```bash
+npm run test:disputes   # smoke: the route module loads and exits cleanly
+npm run test:cjs        # schema, status-machine and validation tests
+```
+
+**Hot reload.** The model is exported as
+`mongoose.models.Dispute || mongoose.model('Dispute', schema)`. Keep that guard:
+`nest start --watch` re-requires the module on every change, and a bare
+`mongoose.model(...)` throws `OverwriteModelError` on the second load, killing
+the watcher mid-session. `test/disputeModel.test.js` pins this.
+
+## Trade validation middleware
+
+Express middleware guarding trade requests:
+`Backend/middleware/tradeValidation.js`, backed by
+`Backend/services/tradeValidator.js`.
+
+**Exports** — `validateTradeRequest`, `validateTradeParameters`,
+`validateTradeLimits`, `validateTradeBalance`, `validateMarketStatus`, and
+`validateTrade(...validators)` to compose them.
+
+**Environment variables**
+
+None directly. The backing service reaches `Backend/models/Balance.js`, so
+`MONGODB_URI` is required for `validateTradeBalance` and `validateTradeRequest`.
+Limits are compile-time constants in `tradeValidator.TRADE_LIMITS`, not env
+vars.
+
+**Scripts**
+
+```bash
+npm run test:trade-validation   # smoke: the middleware module loads
+npm run test:cjs                # limit, balance and combinator tests
+npm run lint                    # see note below
+```
+
+**Linting.** `eslint.config.mjs` now carries a trailing `**/*.js` block that
+turns off type-aware rules for the CommonJS half of the package. Without it
+every `.js` file failed with *"was not found by the project service"* — they
+were unlintable, not clean. Note that the `lint` script itself still only globs
+`{src,apps,libs,test}/**/*.ts`, so `middleware/` is linted only when passed
+explicitly:
+
+```bash
+npx eslint middleware/tradeValidation.js
+```
 
 ## Health endpoints
 

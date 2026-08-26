@@ -2,7 +2,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+First, run the development server from **`Frontend/`**:
 
 ```bash
 npm run dev
@@ -14,11 +14,34 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) (Next.js default). If that port is taken, `next dev` prints the next free port.
+
+If Particle ConnectKit credentials are unset, the default layout wallet shell
+mounts Wagmi + a no-op ConnectKit bridge and never imports Particle into the
+client graph (avoids Turbopack failing on AWS SDK → `node:fs`). To opt into
+ConnectKit, point `app/layout.tsx` at `ParticleClientWrapper.particle` and use
+`npm run dev:webpack` rather than global Node built-in stubs.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## App shell and WebSocket quickstart
+
+`app/layout.tsx` is the application shell. On every route it mounts:
+
+1. `PageErrorBoundary` — render failures show the error message (and stack in development), not a blank page
+2. `ParticleClientWrapper` — client-only wallet provider; **children (navbar + page) render immediately** while ConnectKit loads
+3. `WebSocketProvider` — Socket.IO client to Backend `/prices` (`NEXT_PUBLIC_BACKEND_URL`)
+4. `Navbar` (`components/layout/Navigation.tsx`) — markets, wallet, Connect Wallet
+5. `WalletRuntimeFeatures` — gates `BackupReminder` / `PendingTransactions` until ConnectKit is mounted so those hooks cannot blank the shell
+6. The matched `app/**/page.tsx` route
+
+[WEBSOCKET_QUICKSTART.md](WEBSOCKET_QUICKSTART.md) is the contributor guide for that WebSocket layer: TypeScript `@/*` aliases, env/ports, `/test-websocket`, and JWT requirements. Follow it from `Frontend/`; you do not add another `WebSocketProvider` unless you are writing an isolated test.
+
+TypeScript aliases (`tsconfig.json`): `@/*` → `./*` (this package root). Example: `@/hooks/usePriceUpdates` → `Frontend/hooks/usePriceUpdates.ts`.
+
+Wallet env vars and Backend port details: [CONTRIBUTING.md](../CONTRIBUTING.md), [`Backend/.env.example`](../Backend/.env.example) (`PORT=4000`).
 
 ## Learn More
 
@@ -35,6 +58,50 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
+## The `/archive` route
+
+`app/archive/page.tsx` lists resolved and cancelled markets.
+`components/archive/ArchiveView.tsx` owns filtering, search and the summary
+stats; the page owns data loading and the four terminal states.
+
+**Data flow.** The page calls `/api/archive?limit=500`. That route handler
+(`app/api/archive/route.ts`) proxies to `${NEXT_PUBLIC_API_URL}/markets/archive`,
+forwarding the `category`, `outcome`, `from`, `to` and `limit` filters. The
+browser never learns the backend origin. Both a bare array and a
+`{ data: [...] }` envelope are accepted; rows that fail `isArchivedMarket` are
+dropped rather than being allowed to crash the list mid-render.
+
+**Environment.** `NEXT_PUBLIC_API_URL` — e.g. `http://localhost:4000/api`.
+Resolved through `lib/apiBase.ts`, which keeps the localhost default for local
+development but **throws in production builds** if the variable is unset. The
+previous inline `?? "http://localhost:3000/api"` meant a deployment that forgot
+the variable failed silently, pointing live traffic at a loopback address and
+rendering an empty page instead of an error.
+
+**Hydration.** Data is fetched in an effect, never during render, so the first
+paint is identical on server and client and there is nothing to reconcile. When
+adding to this page, do not seed state from `Date.now()`, `window`, or
+`Math.random()` — each produces a server/client mismatch and the "text content
+did not match" warning.
+
+**No blank screens.** `loading`, `error`, `empty` and `ready` are all rendered
+explicitly. The error state shows the reason the proxy reported and offers a
+retry. The page previously held a static mock array with `isLoading` pinned to
+`false`, so no failure could surface at all.
+
+**Tests.** `app/archive/page.test.tsx` — 10 cases covering the heading, the
+loading state, the proxy URL, rendering, the envelope form, malformed-row
+filtering, the empty state, both error paths, and retry.
+
+```bash
+npm test                        # whole suite
+npx vitest run app/archive      # this route only
+```
+
+> Known unrelated issue: `npm run lint` currently dies with
+> `ERR_PACKAGE_PATH_NOT_EXPORTED` from `zod-validation-error` inside
+> `eslint-config-next`'s dependency tree. It reproduces on untouched files and
+> is a dependency version mismatch, not a code problem.
 ## Docker
 
 ```bash
@@ -71,11 +138,12 @@ Provider order, outermost first:
 | `Navbar` | `components/layout/Navigation.tsx`, re-exported by `app/components/Navbar.tsx` |
 
 `QueryProvider` sits **outside** `ParticleClientWrapper` on purpose.
-`ParticleProvider` returns its children unwrapped when the wallet env vars are
-absent (`isParticleConnectKitConfigured()`), which is the normal state for a
-fresh checkout — a query client nested inside it would vanish exactly when a new
-collaborator first runs the app, and every `useQuery` page would throw
-"No QueryClient set" on first load.
+The default wrapper mounts `UnconfiguredWalletRoot` (`WagmiShell` + no-op
+ConnectKit bridge) so a query client nested inside a missing ConnectKit tree
+would not vanish, and every `useQuery` page would not throw "No QueryClient set"
+on first load. Layout widgets that call wagmi (`PendingTransactions`, home
+quick-trade) keep working because `WagmiShell` always provides a provider when
+Particle is off.
 
 Adding a route to the navbar means adding it to `NAV_LINKS` in
 `components/layout/Navigation.tsx`; the desktop row and the mobile drawer both
@@ -116,6 +184,87 @@ container.
 npm test                      # whole suite
 npx vitest run app/audit       # this route only
 ```
+
+## API routes in the app shell
+
+These Next.js route handlers live under `app/api/*`. The browser talks only to
+same-origin `/api/...` paths; the handlers proxy (or simulate) backend/chain
+work so the client bundle never embeds a production localhost URL.
+
+Shared config: `lib/apiBase.ts` (`resolveApiBase`, `resolveBackendUrl`). Local
+dev may fall back to `http://localhost:4000`; **production builds throw** if the
+matching `NEXT_PUBLIC_*` variable is unset — misconfiguration becomes a JSON
+error, not a blank screen.
+
+| Route | Role | Env |
+|---|---|---|
+| `GET /api/market-sentiment` | Proxies AI sentiment; UI refreshes via WebSocket | `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_BACKEND_URL` |
+| `GET /api/market-audit` | Proxies NestJS audit logs for `/audit` | `NEXT_PUBLIC_API_URL` |
+| `POST /api/multisig/execute` | Executes a ready multisig tx and maps `TransactionExecuted` | (in-memory store; wallet on `/wallet`) |
+| `POST /api/ipfs/upload-json` | Stores market JSON metadata; returns gateway URL | `NEXT_PUBLIC_IPFS_GATEWAY` (optional) |
+
+### `/api/market-sentiment` (#755)
+
+`components/market/MarketSentiment.tsx` (market detail page) calls
+`/api/market-sentiment?marketId=…`. The handler proxies to
+`${NEXT_PUBLIC_API_URL}/ai/sentiment/:marketId` and returns structured errors
+(`VALIDATION_ERROR`, `CONFIG_ERROR`, `BACKEND_UNREACHABLE`, `UPSTREAM_ERROR`)
+instead of failing silently.
+
+**WebSocket.** The component reuses `useWebSocketContext` from the app shell:
+it subscribes to the market and invalidates the React Query key on
+`priceUpdate` / `marketData`. Wallet connect and navbar come from `layout.tsx`
+(`QueryProvider` → `ParticleClientWrapper` → `WebSocketProvider` → `Navbar`);
+this route does not mount its own chrome.
+
+### `/api/market-audit` (#752)
+
+Aligned with `/api/archive`: same `resolveApiBase` helper, forwarded query
+keys (`marketId`, `operation`, `actor`, `from`, `to`, `limit`), and `502` when
+the backend is unreachable. No `localhost:3000` default remains on the
+production path. Consumed by `AuditLogViewer` on `/audit`.
+
+### `/api/multisig/execute` (#759)
+
+`components/wallet/MultisigUI.tsx` (under `/wallet`) posts `{ txId, executor }`.
+`lib/multisigStore` mirrors the backend mock and maps events from
+`Contracts/src/MultiSigWallet.sol`:
+
+- `TransactionCreated(txId, creator, target)`
+- `TransactionApproved(txId, signer)`
+- `TransactionExecuted(txId, executor)`
+
+The response includes `data.events` and a top-level `event` projection for the
+execute step so the UI never invents field names. The in-memory mock does **not**
+fabricate an on-chain `txHash`; that field is omitted until a real broadcast path
+sets it. Happy-path Vitest: `app/api/multisig/execute/route.test.ts`.
+
+### `/api/ipfs/upload-json` (#748)
+
+Used by `useIPFS` → `MarketIPFSPanel` on `/markets/create`. Validates JSON body,
+rejects missing `data`, and returns `{ hash, url }` where `url` comes from
+`NEXT_PUBLIC_IPFS_GATEWAY` or the public Pinata gateway. A production build
+that points the gateway at localhost fails with `CONFIG_ERROR` instead of
+booting a broken upload path. Malformed JSON returns `400` rather than an
+unhandled exception that blanked the page.
+
+### Local verification
+
+```bash
+cd Frontend
+cp .env.example .env.local   # set NEXT_PUBLIC_API_URL / BACKEND_URL as needed
+npm install
+npm test                     # includes the four route suites above
+npm run dev                  # open /, /audit, /wallet, /markets/create
+```
+
+Manual checklist:
+
+1. `/` and navbar render; wallet button mounts (ConnectKit optional without Particle env).
+2. `/audit` loads without console errors; audit proxy errors show in the viewer when the backend is down.
+3. Market detail shows sentiment error/retry (not a blank card) when AI is down; "Live" appears when the WebSocket is connected.
+4. `/wallet` propose → sign (threshold) → execute shows `TransactionExecuted(...)`.
+5. `/markets/create` upload returns a non-localhost gateway URL.
 
 ## SSR Notes
 

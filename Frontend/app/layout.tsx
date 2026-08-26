@@ -13,6 +13,7 @@ import PendingTransactions from "../components/transactions/PendingTransactions"
 import BackupReminder from "../components/wallet/BackupReminder";
 import { ConnectivityProvider } from "./components/ConnectivityProvider";
 import OfflineDetection from "../components/network/OfflineDetection";
+import { WalletRuntimeFeatures } from "./components/WalletRuntimeFeatures";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -30,6 +31,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ThemeProvider>
             <ToastProvider>
               <GlobalErrorHandler />
+              <ParticleClientWrapper>
+                <WebSocketProvider>
+                  <ConnectivityProvider>
+                    <OfflineDetection />
+                    <Navbar />
+                    <WalletRuntimeFeatures>
+                      <BackupReminder />
+                    </WalletRuntimeFeatures>
+                    <PageErrorBoundary>
+                      <div className="flex-1">{children}</div>
+                    </PageErrorBoundary>
+                    <WalletRuntimeFeatures>
+                      <PendingTransactions />
+                    </WalletRuntimeFeatures>
+                  </ConnectivityProvider>
+                </WebSocketProvider>
+              </ParticleClientWrapper>
               <QueryProvider>
                 <ParticleClientWrapper>
                   <WebSocketProvider>
