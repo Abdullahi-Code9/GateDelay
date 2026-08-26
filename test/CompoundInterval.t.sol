@@ -70,12 +70,12 @@ contract CompoundIntervalTest is Test {
 
         (
             ,,
-            uint256 seconds,
+            uint256 intervalSeconds,
             uint256 minYield,
             bool active
         ) = compoundInterval.intervals(intervalId);
 
-        assertEq(seconds, 7200);
+        assertEq(intervalSeconds, 7200);
         assertEq(minYield, 2e18);
         assertFalse(active);
     }
