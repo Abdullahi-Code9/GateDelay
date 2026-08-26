@@ -45,7 +45,7 @@ jobs:
         run: forge --version
 
       - name: Build Contracts
-        run: forge build --sizes --skip test
+        run: forge build --sizes --skip test --skip script
 
       - name: List test suites (Contracts/test/)
         run: forge test --list --match-contract "MarketCapTest|RoleManagerTest"
@@ -77,7 +77,7 @@ jobs:
         run: forge --version
 
       - name: Build (root profile)
-        run: forge build --sizes --skip test
+        run: forge build --sizes --skip test --skip script
 
       - name: List test suites (root test/)
         run: forge test --list --match-contract CircuitBreakerTest
