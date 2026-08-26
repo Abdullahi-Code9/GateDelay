@@ -34,14 +34,14 @@ contract CompoundIntervalTest is Test {
         (
             uint256 id,
             string memory name,
-            uint256 seconds,
+            uint256 intervalSeconds,
             uint256 minYield,
             bool isActive
         ) = compoundInterval.intervals(1);
 
         assertEq(id, 1);
         assertEq(name, "Hourly");
-        assertEq(seconds, 3600);
+        assertEq(intervalSeconds, 3600);
         assertEq(minYield, 1e18);
         assertTrue(isActive);
     }
