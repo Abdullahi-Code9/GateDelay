@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { readFileSync } from 'fs';
 import { plainToInstance } from 'class-transformer';
 import { validateSync, ValidationError } from 'class-validator';
 import {
@@ -332,8 +333,6 @@ describe('RetentionPolicyDto', () => {
 describe('the DTO module itself carries no credentials', () => {
   // Acceptance criterion: "No secrets or private keys in market-audit.dto.ts".
   it('has no secret-shaped literal in the source file', () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { readFileSync } = require('fs') as typeof import('fs');
     const source = readFileSync(`${__dirname}/market-audit.dto.ts`, 'utf8');
     // The scanner's own regexes live in no-secrets.validator.ts, so a hit here
     // is a real literal rather than a pattern definition.
