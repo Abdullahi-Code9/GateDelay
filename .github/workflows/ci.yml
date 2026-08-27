@@ -108,6 +108,30 @@ jobs:
         run: npm run test
         working-directory: Backend
 
+  localnet:
+    name: Localnet — Compile & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.11.0'
+
+      - name: Install dependencies
+        run: npm install --no-package-lock
+        working-directory: Frontend/localnet
+
+      - name: Compile localnet contracts
+        run: npm run lint
+        working-directory: Frontend/localnet
+
+      - name: Run localnet tests
+        run: npm test
+        working-directory: Frontend/localnet
+
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
