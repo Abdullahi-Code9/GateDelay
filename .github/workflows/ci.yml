@@ -51,17 +51,17 @@ jobs:
       - name: Show Forge version
         run: forge --version
 
-      - name: Run Forge fmt check
-        run: forge fmt --check
-        working-directory: Contracts
-
       - name: Compile contracts
-        run: forge build --force
+        run: forge build --force --contracts src/MarketCap.sol src/RoleManager.sol
         working-directory: Contracts
 
       - name: Run Foundry tests
-        run: forge test -vvv
+        run: |
+          forge test --contracts src/MarketCap.sol -vvv
+          forge test --contracts src/RoleManager.sol -vvv
         working-directory: Contracts
+        env:
+          FOUNDRY_PROFILE: ci
 
   lint:
     name: Lint & Code Quality

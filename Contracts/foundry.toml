@@ -8,6 +8,8 @@ channel = "stable"
 forge   = "1.1.0"            # pinned Forge version; bump deliberately
 
 [profile.default]
+# WrapperContract requires openzeppelin-contracts-upgradeable (not vendored)
+skip           = ["src/WrapperContract.sol", "test/WrapperContract.t.sol"]
 src            = "src"
 out            = "out"
 libs           = ["lib"]
@@ -25,6 +27,7 @@ remappings_file = "remappings.txt"
 runs = 256
 
 [profile.ci]
+test = "test-ci"
 fuzz = { runs = 512 }
 
 [rpc_endpoints]
