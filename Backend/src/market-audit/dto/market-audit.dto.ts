@@ -74,7 +74,7 @@ const OPERATION_PATTERN = /^[A-Z][A-Z0-9_]*$/;
  * *begin* with a spreadsheet formula sigil (threat #4) - Excel and Sheets
  * execute `=`, `+`, `-` and `@` prefixed cells straight out of the CSV export.
  */
-const NO_CONTROL_CHARS = /^[^\u0000-\u001F\u007F]*$/;
+const NO_CONTROL_CHARS = /^[^\p{Cc}]*$/u;
 const NOT_A_FORMULA = /^[^=+\-@]/;
 
 export class CreateAuditLogDto {
@@ -147,7 +147,10 @@ export class AuditQueryDto {
    * the filter honest instead of quietly returning the unfiltered log.
    */
   @IsOptional()
-  @IsISO8601({ strict: true }, { message: 'from must be an ISO-8601 timestamp' })
+  @IsISO8601(
+    { strict: true },
+    { message: 'from must be an ISO-8601 timestamp' },
+  )
   from?: string;
 
   @IsOptional()
