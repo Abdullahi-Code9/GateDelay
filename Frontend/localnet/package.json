@@ -10,8 +10,10 @@
   "scripts": {
     "node": "hardhat node",
     "deploy": "hardhat run --network localhost scripts/deploy.js",
+    "health": "hardhat health-check",
     "lint": "hardhat compile",
-    "test": "hardhat test"
+    "test": "hardhat test",
+    "test:smoke": "hardhat test test/health.test.js"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "3.0.0",

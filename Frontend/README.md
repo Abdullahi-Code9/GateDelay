@@ -202,6 +202,7 @@ error, not a blank screen.
 | `GET /api/market-audit` | Proxies NestJS audit logs for `/audit` | `NEXT_PUBLIC_API_URL` |
 | `POST /api/multisig/execute` | Executes a ready multisig tx and maps `TransactionExecuted` | (in-memory store; wallet on `/wallet`) |
 | `POST /api/ipfs/upload-json` | Stores market JSON metadata; returns gateway URL | `NEXT_PUBLIC_IPFS_GATEWAY` (optional) |
+| `GET /api/ipfs/gateway/[hash]` | Resolves a gateway URL + storage status for an IPFS hash | `NEXT_PUBLIC_IPFS_GATEWAY` (optional) |
 
 ### `/api/market-sentiment` (#755)
 
@@ -248,13 +249,36 @@ that points the gateway at localhost fails with `CONFIG_ERROR` instead of
 booting a broken upload path. Malformed JSON returns `400` rather than an
 unhandled exception that blanked the page.
 
+### `/api/ipfs/gateway/[hash]` (#738)
+
+The gateway route is the read side of the upload flow. `[hash]` is matched by a
+Next.js dynamic segment (see `app/api/ipfs/gateway/[hash]/route.ts`) and the
+handler resolves the matching `NEXT_PUBLIC_IPFS_GATEWAY` URL plus the storage
+status for that hash from the in-memory `lib/ipfsStore` shim:
+
+```json
+{ "success": true, "data": { "url": "https://gateway.pinata.cloud/ipfs/Qm…", "stored": true, "pinned": true, "gatewayUrl": "…" } }
+```
+
+The route never throws into the app shell. Missing/empty/unsupported hashes
+return `400 VALIDATION_ERROR`, a production build pointed at a localhost
+gateway returns `500 CONFIG_ERROR`, and any other fault returns
+`500 INTERNAL_ERROR` — so a contributor debugging IPFS gets a JSON reason
+instead of a blank page. Wallet connect and navigation are unaffected: the
+route mounts no chrome of its own and renders inside `app/layout.tsx` like
+every other route handler.
+
+**Smoke test:** `app/api/ipfs/gateway/[hash]/route.test.ts` (upload → gateway
+read, unknown hash, missing/malformed hash, production localhost config, and
+unexpected fault). Run with `npm test` or `npx vitest run app/api/ipfs`.
+
 ### Local verification
 
 ```bash
 cd Frontend
 cp .env.example .env.local   # set NEXT_PUBLIC_API_URL / BACKEND_URL as needed
 npm install
-npm test                     # includes the four route suites above
+npm test                     # includes the five route suites above
 npm run dev                  # open /, /audit, /wallet, /markets/create
 ```
 
@@ -264,7 +288,8 @@ Manual checklist:
 2. `/audit` loads without console errors; audit proxy errors show in the viewer when the backend is down.
 3. Market detail shows sentiment error/retry (not a blank card) when AI is down; "Live" appears when the WebSocket is connected.
 4. `/wallet` propose → sign (threshold) → execute shows `TransactionExecuted(...)`.
-5. `/markets/create` upload returns a non-localhost gateway URL.
+5. `/markets/create` upload returns a non-localhost gateway URL; opening that URL in the gateway route shows the uploaded metadata.
+6. Hitting `/api/ipfs/gateway/` with an empty hash returns a JSON `VALIDATION_ERROR`, never a blank screen.
 
 ## SSR Notes
 
