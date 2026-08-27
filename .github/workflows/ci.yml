@@ -57,8 +57,8 @@ jobs:
 
       - name: Run Foundry tests
         run: |
-          forge test --contracts src/MarketCap.sol --match-contract MarketCapTest -vvv
-          forge test --contracts src/RoleManager.sol --match-contract RoleManagerTest -vvv
+          forge test --match-path test/MarketCap.t.sol --match-contract MarketCapTest -vvv
+          forge test --match-path test/RoleManager.t.sol --match-contract RoleManagerTest -vvv
         working-directory: Contracts
 
   lint:
