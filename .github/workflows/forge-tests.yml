@@ -48,12 +48,16 @@ jobs:
         run: forge build --contracts src/MarketCap.sol src/RoleManager.sol
 
       - name: List test suites (Contracts/test-ci/)
-        run: forge test --list --contracts src/MarketCap.sol --contracts src/RoleManager.sol
+        run: |
+          forge test --list --contracts src/MarketCap.sol
+          forge test --list --contracts src/RoleManager.sol
         env:
           FOUNDRY_PROFILE: ci
 
       - name: Run Contracts CI tests
-        run: forge test --contracts src/MarketCap.sol --contracts src/RoleManager.sol -vvv
+        run: |
+          forge test --contracts src/MarketCap.sol -vvv
+          forge test --contracts src/RoleManager.sol -vvv
         env:
           FOUNDRY_PROFILE: ci
 

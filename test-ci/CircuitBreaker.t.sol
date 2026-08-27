@@ -31,7 +31,7 @@ contract CircuitBreakerTest is Test {
     function test_TriggerBreakOpensCircuit() public {
         for (uint256 i = 0; i < 5; i++) {
             vm.prank(monitor);
-            circuitBreaker.recordFailure();
+            circuitBreaker.recordFailure("test failure");
         }
 
         assertEq(uint256(circuitBreaker.currentState()), uint256(CircuitBreaker.State.Open));
