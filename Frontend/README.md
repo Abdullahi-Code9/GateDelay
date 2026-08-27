@@ -43,6 +43,82 @@ TypeScript aliases (`tsconfig.json`): `@/*` → `./*` (this package root). Examp
 
 Wallet env vars and Backend port details: [CONTRIBUTING.md](../CONTRIBUTING.md), [`Backend/.env.example`](../Backend/.env.example) (`PORT=4000`).
 
+## Runbook — wallet + trade flow on a clean checkout (#710)
+
+This section answers "how do I run the wallet and trade flow locally?" for a
+first-time contributor on a clean checkout.
+
+### Prerequisites
+
+| Tool | Minimum version | Notes |
+|---|---|---|
+| Node.js | 18.x (LTS) | 20.x recommended; required by Next.js 14 |
+| npm | 9.x | Comes with Node.js |
+| Backend API | running on port 4000 | See `Backend/README.md` for setup |
+
+### Step-by-step
+
+```bash
+# 1. Clone and enter the frontend directory
+cd Frontend
+
+# 2. Install dependencies (locked to package-lock.json)
+npm install
+
+# 3. Create a local env file from the example template
+cp .env.example .env.local
+# Open .env.local and set:
+#   NEXT_PUBLIC_API_URL=http://localhost:4000/api   (NestJS backend)
+#   NEXT_PUBLIC_BACKEND_URL=http://localhost:4000   (WebSocket / direct calls)
+# The wallet keys (PROJECT_ID, CLIENT_KEY, APP_ID) are optional for local dev —
+# the app runs in no-wallet mode when they are absent.
+
+# 4. Start the development server
+npm run dev
+# → http://localhost:3000
+```
+
+> **Ports.**  The frontend default is `3000`; the backend API default is `4000`.
+> Both values come from `Frontend/.env.example` and `Backend/.env.example`
+> respectively — do not hard-code either port anywhere.
+
+### Wallet connect flow
+
+1. Open `http://localhost:3000`.
+2. Click **Connect Wallet** in the navbar.
+3. Without Particle credentials the app mounts a no-op ConnectKit bridge; the
+   wallet button renders but signing is unavailable.  To enable real signing,
+   set `NEXT_PUBLIC_PROJECT_ID`, `NEXT_PUBLIC_CLIENT_KEY`, and
+   `NEXT_PUBLIC_APP_ID` in `.env.local` then restart the dev server.
+
+### Trade flow
+
+1. With the backend running and the dev server up, navigate to the markets list
+   (`/`).
+2. Select a market → click **Trade** → enter an amount → confirm.
+3. The WebSocket provider (`app/layout.tsx`) subscribes to `/prices` on the
+   backend and refreshes prices in real time; look for the green **Live** badge
+   on the market detail page.
+
+### Environment variables and ports (verified against `.env.example` files)
+
+| Variable | File | Default | Purpose |
+|---|---|---|---|
+| `NEXT_PUBLIC_API_URL` | `Frontend/.env.example` | `http://localhost:4000/api` | NestJS API base (proxied by Next.js route handlers) |
+| `NEXT_PUBLIC_BACKEND_URL` | `Frontend/.env.example` | `http://localhost:4000` | Direct browser + WebSocket connection |
+| `NEXT_PUBLIC_IPFS_GATEWAY` | `Frontend/.env.example` | Pinata public gateway | Market metadata upload |
+| `PORT` | `Backend/.env.example` | `4000` | Express / NestJS listen port |
+| `MONGODB_URI` | `Backend/.env.example` | `mongodb://127.0.0.1:27017/gatedelay` | Primary data store |
+| `REDIS_URL` | `Backend/.env.example` | `redis://127.0.0.1:6379` | Queues, throttling, blacklist |
+
+### Verified links
+
+- [`Backend/.env.example`](../Backend/.env.example) — all backend required keys
+- [`Frontend/.env.example`](.env.example) — all frontend required keys
+- [`Backend/README.md`](../Backend/README.md) — backend setup and runbook
+- [WEBSOCKET_QUICKSTART.md](WEBSOCKET_QUICKSTART.md) — WebSocket layer details
+- [`../CONTRIBUTING.md`](../CONTRIBUTING.md) — wallet env vars and port details
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
