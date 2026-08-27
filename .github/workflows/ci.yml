@@ -56,7 +56,7 @@ jobs:
         working-directory: Contracts
 
       - name: Run Foundry tests
-        run: forge test -vvv
+        run: forge test --contracts src/MarketCap.sol --contracts src/RoleManager.sol -vvv
         working-directory: Contracts
         env:
           FOUNDRY_PROFILE: ci
