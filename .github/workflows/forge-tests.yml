@@ -48,12 +48,12 @@ jobs:
         run: forge build --contracts src/MarketCap.sol src/RoleManager.sol
 
       - name: List test suites (Contracts/test-ci/)
-        run: forge test --list
+        run: forge test --list --contracts src/MarketCap.sol --contracts src/RoleManager.sol
         env:
           FOUNDRY_PROFILE: ci
 
       - name: Run Contracts CI tests
-        run: forge test -vvv
+        run: forge test --contracts src/MarketCap.sol --contracts src/RoleManager.sol -vvv
         env:
           FOUNDRY_PROFILE: ci
 
@@ -77,14 +77,16 @@ jobs:
         run: forge --version
 
       - name: Build (root profile)
-        run: forge build --contracts Contracts/src/CircuitBreaker.sol
+        run: forge build --contracts Contracts/src/CircuitBreaker.sol --skip test
+        env:
+          FOUNDRY_PROFILE: ci
 
       - name: List test suites (root test-ci/)
-        run: forge test --list
+        run: forge test --list --contracts Contracts/src/CircuitBreaker.sol
         env:
           FOUNDRY_PROFILE: ci
 
       - name: Run root CI tests
-        run: forge test -vvv
+        run: forge test --contracts Contracts/src/CircuitBreaker.sol -vvv
         env:
           FOUNDRY_PROFILE: ci
