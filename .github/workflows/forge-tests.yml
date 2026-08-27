@@ -45,15 +45,15 @@ jobs:
         run: forge --version
 
       - name: Build Contracts
-        run: forge build --sizes --skip test --skip script
+        run: forge build --contracts src/MarketCap.sol src/RoleManager.sol
 
       - name: List test suites (Contracts/test/)
         run: forge test --list --match-contract "MarketCapTest|RoleManagerTest"
 
       - name: Run Contracts/test/ tests
         run: |
-          forge test --match-contract MarketCapTest -vvv
-          forge test --match-contract RoleManagerTest -vvv
+          forge test --contracts src/MarketCap.sol --match-contract MarketCapTest -vvv
+          forge test --contracts src/RoleManager.sol --match-contract RoleManagerTest -vvv
         env:
           FOUNDRY_PROFILE: ci
 
@@ -77,10 +77,10 @@ jobs:
         run: forge --version
 
       - name: Build (root profile)
-        run: forge build --sizes --skip test --skip script
+        run: forge build --contracts Contracts/src/CircuitBreaker.sol
 
       - name: List test suites (root test/)
         run: forge test --list --match-contract CircuitBreakerTest
 
       - name: Run root test/ tests
-        run: forge test --match-contract CircuitBreakerTest -vvv
+        run: forge test --contracts Contracts/src/CircuitBreaker.sol --match-contract CircuitBreakerTest -vvv

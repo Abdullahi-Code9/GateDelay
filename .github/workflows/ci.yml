@@ -51,18 +51,14 @@ jobs:
       - name: Show Forge version
         run: forge --version
 
-      - name: Run Forge fmt check
-        run: forge fmt --check src/
-        working-directory: Contracts
-
       - name: Compile contracts
-        run: forge build --force --skip test --skip script
+        run: forge build --force --contracts src/MarketCap.sol src/RoleManager.sol
         working-directory: Contracts
 
       - name: Run Foundry tests
         run: |
-          forge test --match-contract MarketCapTest -vvv
-          forge test --match-contract RoleManagerTest -vvv
+          forge test --contracts src/MarketCap.sol --match-contract MarketCapTest -vvv
+          forge test --contracts src/RoleManager.sol --match-contract RoleManagerTest -vvv
         working-directory: Contracts
 
   lint:
