@@ -27,6 +27,7 @@ remappings_file = "remappings.txt"
 runs = 256
 
 [profile.ci]
+test = "test-ci"
 fuzz = { runs = 512 }
 
 [rpc_endpoints]

@@ -31,6 +31,9 @@ remappings = [
   "src/=Contracts/src/",
 ]
 
+[profile.ci]
+test = "test-ci"
+
 [profile.default.fuzz]
 runs = 256
 
