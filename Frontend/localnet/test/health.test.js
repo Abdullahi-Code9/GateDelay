@@ -1,4 +1,4 @@
-const { assert } = require('node:assert')
+const assert = require('node:assert')
 const hre = require('hardhat')
 
 describe('localnet health probe', function () {
