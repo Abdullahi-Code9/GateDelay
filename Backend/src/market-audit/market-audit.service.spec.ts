@@ -140,10 +140,10 @@ describe('MarketAuditService', () => {
     const content = readFileSync(servicePath, 'utf8');
 
     const secretPatterns = [
-      /0x[0-9a-fA-F]{64}/,        // Ethereum private key
-      /-----BEGIN.*PRIVATE KEY/,    // PEM key
-      /password\s*[:=]\s*["']/i,   // password assignment
-      /secret\s*[:=]\s*["']/i,     // secret assignment
+      /0x[0-9a-fA-F]{64}/, // Ethereum private key
+      /-----BEGIN.*PRIVATE KEY/, // PEM key
+      /password\s*[:=]\s*["']/i, // password assignment
+      /secret\s*[:=]\s*["']/i, // secret assignment
       /api[_-]?key\s*[:=]\s*["']/i,
       /mnemonic/i,
     ];
