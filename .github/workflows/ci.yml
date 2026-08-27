@@ -56,10 +56,10 @@ jobs:
         working-directory: Contracts
 
       - name: Run Foundry tests
-        run: |
-          forge test --match-path test/MarketCap.t.sol --match-contract MarketCapTest -vvv
-          forge test --match-path test/RoleManager.t.sol --match-contract RoleManagerTest -vvv
+        run: forge test -vvv
         working-directory: Contracts
+        env:
+          FOUNDRY_PROFILE: ci
 
   lint:
     name: Lint & Code Quality
