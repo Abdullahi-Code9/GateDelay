@@ -52,8 +52,8 @@ jobs:
 
       - name: Run Contracts/test/ tests
         run: |
-          forge test --contracts src/MarketCap.sol --match-contract MarketCapTest -vvv
-          forge test --contracts src/RoleManager.sol --match-contract RoleManagerTest -vvv
+          forge test --match-path test/MarketCap.t.sol --match-contract MarketCapTest -vvv
+          forge test --match-path test/RoleManager.t.sol --match-contract RoleManagerTest -vvv
         env:
           FOUNDRY_PROFILE: ci
 
@@ -83,4 +83,4 @@ jobs:
         run: forge test --list --match-contract CircuitBreakerTest
 
       - name: Run root test/ tests
-        run: forge test --contracts Contracts/src/CircuitBreaker.sol --match-contract CircuitBreakerTest -vvv
+        run: forge test --match-path test/CircuitBreaker.t.sol --match-contract CircuitBreakerTest -vvv
