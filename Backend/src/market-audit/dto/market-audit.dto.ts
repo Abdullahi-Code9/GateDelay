@@ -148,7 +148,10 @@ export class AuditQueryDto {
    * the filter honest instead of quietly returning the unfiltered log.
    */
   @IsOptional()
-  @IsISO8601({ strict: true }, { message: 'from must be an ISO-8601 timestamp' })
+  @IsISO8601(
+    { strict: true },
+    { message: 'from must be an ISO-8601 timestamp' },
+  )
   from?: string;
 
   @IsOptional()
