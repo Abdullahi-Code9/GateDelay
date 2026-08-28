@@ -289,6 +289,15 @@ cleanly with:
 ```bash
 npm run test:pagerduty
 ```
+## Market Status endpoints
+
+The backend exposes market operational status and uptime tracking API endpoints:
+
+**Express server (port 4000) or mounted at `/status`:**
+- `GET /status/:marketId` — Retrieves current operational status (ACTIVE, PAUSED, MAINTENANCE, OFFLINE), uptime/downtime statistics, and last status change.
+- `GET /status/:marketId/history` — Queries paginated history logs of status transitions for the market.
+- `POST /status/:marketId/toggle` — Updates the operational status of the market (requires `x-operator-id` header).
+
 
 ## Compile and run the project
 
