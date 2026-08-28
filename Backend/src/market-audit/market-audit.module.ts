@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { MarketAuditController } from './market-audit.controller';
-import { BETA_ACCESS_CHECKER, MarketAuditService } from './market-audit.service';
-
-const betaAccess = require('../../../backend/services/betaAccess');
+import {
+  BETA_ACCESS_CHECKER,
+  MarketAuditService,
+} from './market-audit.service';
+import betaAccess from '../../../backend/services/betaAccess';
 
 @Module({
   controllers: [MarketAuditController],
