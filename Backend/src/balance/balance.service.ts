@@ -1,10 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import balanceService from '../../services/balanceService';
 
 // The legacy model remains the persistence contract for both API stacks.
-const balanceService = require('../../services/balanceService') as {
-  getBalances(userId: string, asset?: string): Promise<unknown[]>;
-  getBalance(userId: string, asset: string): Promise<unknown | null>;
-};
 
 @Injectable()
 export class BalanceService {
