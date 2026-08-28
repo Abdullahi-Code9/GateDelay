@@ -268,6 +268,27 @@ The backend exposes health check endpoints for monitoring and CI/CD probes:
 - `GET /api/health` - Basic health check with service info
 - `GET /api/health/details` - Detailed health with uptime, memory, and environment info
 
+## PagerDuty alerting
+
+`Backend/services/pagerduty.js` sends/acknowledges/resolves PagerDuty incidents and syncs
+on-call schedules. It reads its config from `Backend/config/pagerduty.js`, which in turn
+reads three optional environment variables (`Backend/.env.example`):
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `PAGERDUTY_API_KEY` | No | PagerDuty REST API key |
+| `PAGERDUTY_SERVICE_ID` | No | Target service for alert routing |
+| `PAGERDUTY_FROM_EMAIL` | No | Sender address on incident requests |
+
+All three are optional — the app boots normally without them. If any is missing,
+`config/pagerduty.js` logs a single `[pagerduty] Alerting is not fully configured` warning
+at startup naming the missing variable(s), rather than only surfacing as an opaque
+401/400 from the PagerDuty API the first time an alert is sent. Verify the module loads
+cleanly with:
+
+```bash
+npm run test:pagerduty
+```
 ## Market Status endpoints
 
 The backend exposes market operational status and uptime tracking API endpoints:
