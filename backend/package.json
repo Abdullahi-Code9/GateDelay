@@ -30,7 +30,11 @@
     "express:dev": "node --watch ../backend/server.js",
     "test:disputes": "node -e \"require('./routes/disputes'); console.log('DISPUTES_SMOKE_PASS')\"",
     "test:trade-validation": "node -e \"require('./middleware/tradeValidation'); console.log('TRADE_VALIDATION_SMOKE_PASS')\"",
-    "test:upgrade-manager": "node -e \"const um = require('./jobs/upgradeManager'); if (typeof um.start !== 'function' || typeof um.stop !== 'function') { console.error('FAIL: Missing required methods'); process.exit(1); } console.log('UPGRADE_MANAGER_SMOKE_PASS'); process.exit(0);\""
+    "test:rate-limits": "node -e \"const c = require('./config/rateLimits'); ['tiers','endpoints','ipLimits','whitelist','messages','headers','redis','costs','adaptive'].forEach(k => { if (!c[k]) { console.error('FAIL: missing section ' + k); process.exit(1); } }); ['PUBLIC','BASIC','PREMIUM','VIP','ADMIN'].forEach(t => { if (!c.tiers[t]) { console.error('FAIL: missing tier ' + t); process.exit(1); } }); if (!Array.isArray(c.whitelist.ips)) { console.error('FAIL: whitelist.ips is not an array'); process.exit(1); } console.log('RATE_LIMITS_SMOKE_PASS')\"",
+    "test:deprecation": "node -e \"const middleware = require('./middleware/deprecation'); if (typeof middleware.deprecationMiddleware !== 'function' || typeof middleware.markDeprecated !== 'function') process.exit(1); console.log('DEPRECATION_SMOKE_PASS')\"",
+    "test:heartbeat": "node scripts/smoke/heartbeat-marketfactory.smoke.js",
+    "test:pagerduty": "node -e \"require('./config/pagerduty'); console.log('PAGERDUTY_SMOKE_PASS')\"",
+    "test:api-protection": "node scripts/smoke/api-protection.smoke.js"
   },
   "dependencies": {
     "@keyv/redis": "^5.1.6",

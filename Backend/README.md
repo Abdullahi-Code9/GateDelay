@@ -242,6 +242,37 @@ explicitly:
 npx eslint middleware/tradeValidation.js
 ```
 
+## Rate limit configuration
+
+`Backend/config/rateLimits.js` is the single CommonJS source of rate-limit rules
+shared by the legacy Express limiter (`Backend/middleware/rateLimiter.js`) and the
+Nest rate-limiter module (`Backend/src/rate-limiter/`). It is a plain data module —
+requiring it has no side effects and opens no connections.
+
+**Sections** — `tiers` (PUBLIC / BASIC / PREMIUM / VIP / ADMIN request budgets),
+`endpoints` (per-endpoint, per-tier `{ max, windowMs }` overrides), `ipLimits`
+(`global` and `strict` per-IP buckets), `whitelist`, `messages`, `headers`,
+`redis`, `costs` (read / write / heavy operation weights), and `adaptive`
+(load-based tightening, disabled by default).
+
+**Environment variables**
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `RATE_LIMIT_WHITELIST` | No | Comma-separated IPs exempt from rate limiting. Empty/unset ⇒ `whitelist.ips` is `[]`. |
+
+Everything else — tier budgets, window sizes, Redis prefix/TTL — is a
+compile-time constant in this file, not an env var. Redis connection details for
+the limiter store come from the standard `REDIS_HOST` / `REDIS_PORT` /
+`REDIS_DB` vars read by `middleware/rateLimiter.js`.
+
+**Scripts**
+
+```bash
+npm run test:rate-limits   # smoke: config module loads and every section/tier is present
+npm test                   # runs src/rate-limits-config.spec.ts (shape + consistency checks)
+```
+
 ## Health endpoints
 
 ## Deprecation middleware
