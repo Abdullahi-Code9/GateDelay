@@ -227,6 +227,24 @@ Adding a route to the navbar means adding it to `NAV_LINKS` in
 `components/layout/Navigation.tsx`; the desktop row and the mobile drawer both
 render from that one array.
 
+## The `/arbitrage-demo` route
+
+`/arbitrage-demo` is a **Pages Router** page (`pages/arbitrage-demo.tsx`), so it
+renders **outside** the `app/layout.tsx` shell described above — no navbar, no
+wallet/query/WebSocket providers, no `PageErrorBoundary`. The navbar still links
+to it (`NAV_LINKS` → "Arbitrage"); following that link is a full-page navigation
+out of the app shell.
+
+`ArbitrageDisplay` itself needs no wallet or backend — it scans the markets it is
+handed (bundled `data/mockMarkets.ts`, or `GET /api/markets` when the backend is
+up) and renders opportunities. The on-chain `WagmiArbitrageExecutor` is the only
+part that needs wagmi context and must be mounted inside the shell.
+
+Full contributor guide — setup, the contract-event → `Status:` mapping, a manual
+happy-path checklist, and troubleshooting for the "blank screen / no
+opportunities" cases — is in [ARBITRAGE_DEMO.md](ARBITRAGE_DEMO.md). Vitest
+coverage: `components/arbitrage/ArbitrageDisplay.test.tsx`.
+
 ## The `/audit` route
 
 `app/audit/page.tsx` is the market audit log. It owns the page container, header
