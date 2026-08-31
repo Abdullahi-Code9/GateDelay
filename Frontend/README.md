@@ -39,6 +39,8 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 [WEBSOCKET_QUICKSTART.md](WEBSOCKET_QUICKSTART.md) is the contributor guide for that WebSocket layer: TypeScript `@/*` aliases, env/ports, `/test-websocket`, and JWT requirements. Follow it from `Frontend/`; you do not add another `WebSocketProvider` unless you are writing an isolated test.
 
+For how the pieces above `WebSocketProvider` fit together — the `useWebSocket` connection hook, the `usePriceUpdates` subscription layer, and `PriceDisplay`'s flash-on-change rendering, plus the polling fallback when a socket can't connect — see [WEBSOCKET_IMPLEMENTATION.md](WEBSOCKET_IMPLEMENTATION.md). `WebSocketProvider` is already mounted once in `app/layout.tsx` (item 3 above); that doc covers what runs underneath it, while WEBSOCKET_QUICKSTART.md covers getting a local environment talking to it.
+
 TypeScript aliases (`tsconfig.json`): `@/*` → `./*` (this package root). Example: `@/hooks/usePriceUpdates` → `Frontend/hooks/usePriceUpdates.ts`.
 
 Wallet env vars and Backend port details: [CONTRIBUTING.md](../CONTRIBUTING.md), [`Backend/.env.example`](../Backend/.env.example) (`PORT=4000`).
@@ -224,6 +226,24 @@ Particle is off.
 Adding a route to the navbar means adding it to `NAV_LINKS` in
 `components/layout/Navigation.tsx`; the desktop row and the mobile drawer both
 render from that one array.
+
+## The `/arbitrage-demo` route
+
+`/arbitrage-demo` is a **Pages Router** page (`pages/arbitrage-demo.tsx`), so it
+renders **outside** the `app/layout.tsx` shell described above — no navbar, no
+wallet/query/WebSocket providers, no `PageErrorBoundary`. The navbar still links
+to it (`NAV_LINKS` → "Arbitrage"); following that link is a full-page navigation
+out of the app shell.
+
+`ArbitrageDisplay` itself needs no wallet or backend — it scans the markets it is
+handed (bundled `data/mockMarkets.ts`, or `GET /api/markets` when the backend is
+up) and renders opportunities. The on-chain `WagmiArbitrageExecutor` is the only
+part that needs wagmi context and must be mounted inside the shell.
+
+Full contributor guide — setup, the contract-event → `Status:` mapping, a manual
+happy-path checklist, and troubleshooting for the "blank screen / no
+opportunities" cases — is in [ARBITRAGE_DEMO.md](ARBITRAGE_DEMO.md). Vitest
+coverage: `components/arbitrage/ArbitrageDisplay.test.tsx`.
 
 ## The `/audit` route
 

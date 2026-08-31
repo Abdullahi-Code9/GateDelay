@@ -5,6 +5,9 @@ import {
   MarketAuditService,
 } from './market-audit.service';
 import betaAccess from '../../../backend/services/betaAccess';
+import { BETA_ACCESS_CHECKER, MarketAuditService } from './market-audit.service';
+
+const betaAccess = require('../../../backend/services/betaAccess');
 
 @Module({
   controllers: [MarketAuditController],
